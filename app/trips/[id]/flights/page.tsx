@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Trip, FlightPreference, FlightOption } from '@/types';
 import { scoreFlights } from '@/lib/utils';
 import { generateMockFlights } from '@/lib/flights';
@@ -188,12 +189,20 @@ export default function FlightsPage() {
     <div className="min-h-screen bg-slate-900 py-8">
       <div className="container mx-auto px-4 max-w-6xl">
         <div className="mb-6">
-          <button
-            onClick={() => router.back()}
-            className="text-blue-400 hover:text-blue-300 mb-4 underline"
-          >
-            ← Back to Trip
-          </button>
+          <div className="flex gap-4 mb-4">
+            <Link
+              href="/"
+              className="text-blue-400 hover:text-blue-300 underline"
+            >
+              ← Back to My Trips
+            </Link>
+            <button
+              onClick={() => router.back()}
+              className="text-blue-400 hover:text-blue-300 underline"
+            >
+              ← Back to Trip
+            </button>
+          </div>
           <h1 className="text-3xl font-bold text-slate-50">Flights</h1>
           <p className="text-slate-300 mt-2">
             {trip.destination.city}, {trip.destination.country}

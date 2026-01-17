@@ -188,7 +188,13 @@ export default function TripDetailPage() {
       <div className="card-surface shadow border-b border-slate-700">
         <div className="container mx-auto px-4 py-6">
           <div className="flex justify-between items-center">
-            <div>
+            <div className="flex-1">
+              <Link
+                href="/"
+                className="text-blue-400 hover:text-blue-300 mb-2 inline-block text-sm underline"
+              >
+                ← Back to My Trips
+              </Link>
               <h1 className="text-3xl font-bold text-slate-50">{trip.name}</h1>
               <p className="text-slate-300 mt-1">
                 {trip.destination_city}, {trip.destination_country}
