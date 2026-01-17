@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
-import BackgroundOrb from "@/components/BackgroundOrb";
+import WorldMapFlashlight from "@/components/WorldMapFlashlight";
 
 export const metadata: Metadata = {
   title: "Trippy - Collaborative Trip Planning",
@@ -16,7 +16,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        <BackgroundOrb />
+        <WorldMapFlashlight />
         <AuthProvider>
           {children}
         </AuthProvider>
