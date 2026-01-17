@@ -253,7 +253,7 @@ export default function PreferencesPage() {
         {/* Member Selection */}
         <div className="card-surface rounded-lg p-6 mb-6">
           <label className="block text-sm font-medium text-slate-200 mb-2">
-            Who are you?
+            Select member
           </label>
           <select
             value={selectedMemberId}
@@ -271,6 +271,47 @@ export default function PreferencesPage() {
 
         {selectedMemberId && (
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Budget Preferences */}
+            <div className="card-surface rounded-lg p-6">
+              <h2 className="text-xl font-semibold mb-4 text-slate-50">💰 Budget Preferences</h2>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-200 mb-2">
+                    Budget Preference (USD)
+                  </label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <input
+                      type="number"
+                      value={formData.accommodation_budget_min}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          accommodation_budget_min: e.target.value,
+                        })
+                      }
+                      className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Min"
+                      min="0"
+                    />
+                    <input
+                      type="number"
+                      value={formData.accommodation_budget_max}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          accommodation_budget_max: e.target.value,
+                        })
+                      }
+                      className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Max"
+                      min="0"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Flight Preferences */}
             <div className="card-surface rounded-lg p-6">
               <h2 className="text-xl font-semibold mb-4 text-slate-50">✈️ Flight Preferences</h2>
@@ -342,40 +383,6 @@ export default function PreferencesPage() {
               <h2 className="text-xl font-semibold mb-4 text-slate-50">🏨 Accommodation Preferences</h2>
 
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-200 mb-2">
-                    Accommodation Budget (USD per night)
-                  </label>
-                  <div className="grid grid-cols-2 gap-4">
-                    <input
-                      type="number"
-                      value={formData.accommodation_budget_min}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          accommodation_budget_min: e.target.value,
-                        })
-                      }
-                      className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Min"
-                      min="0"
-                    />
-                    <input
-                      type="number"
-                      value={formData.accommodation_budget_max}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          accommodation_budget_max: e.target.value,
-                        })
-                      }
-                      className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Max"
-                      min="0"
-                    />
-                  </div>
-                </div>
-
                 <div>
                   <label className="block text-sm font-medium text-slate-200 mb-2">
                     Accommodation Type
