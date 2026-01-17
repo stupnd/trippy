@@ -3,12 +3,15 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { useAuth, useTripMember } from '@/lib/auth';
 import { v4 as uuidv4 } from 'uuid';
 
 export default function PreferencesPage() {
   const params = useParams();
   const router = useRouter();
   const tripId = params.id as string;
+  const { user, loading: authLoading, signOut } = useAuth();
+  const { isMember, loading: memberLoading } = useTripMember(tripId);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -49,16 +52,6 @@ export default function PreferencesPage() {
     'Any',
   ];
 
-  useEffect(() => {
-    fetchMembers();
-  }, [tripId]);
-
-  useEffect(() => {
-    if (selectedMemberId) {
-      fetchPreferences();
-    }
-  }, [selectedMemberId, tripId]);
-
   const fetchMembers = async () => {
     try {
       const { data, error } = await supabase
@@ -70,10 +63,16 @@ export default function PreferencesPage() {
       if (error) throw error;
 
       setMembers(data || []);
-      if (data && data.length > 0 && !selectedMemberId) {
-        // Auto-select first member, or check localStorage
-        const storedMemberId = localStorage.getItem(`trip_${tripId}_member_id`);
-        setSelectedMemberId(storedMemberId || data[0].id);
+      if (data && data.length > 0 && !selectedMemberId && user) {
+        // Auto-select current user's member ID if they're a member
+        const userMember = data.find((m) => m.id === user.id);
+        if (userMember) {
+          setSelectedMemberId(userMember.id);
+        } else {
+          // Fallback to first member or localStorage
+          const storedMemberId = localStorage.getItem(`trip_${tripId}_member_id`);
+          setSelectedMemberId(storedMemberId || data[0].id);
+        }
       }
     } catch (error: any) {
       console.error('Error fetching members:', error);
@@ -114,6 +113,32 @@ export default function PreferencesPage() {
       console.error('Error fetching preferences:', error);
     }
   };
+
+  // Auth protection
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push(`/auth?redirect=${encodeURIComponent(`/trips/${tripId}/preferences`)}`);
+      return;
+    }
+
+    if (!authLoading && user && !memberLoading && isMember === false) {
+      // User is logged in but not a member - redirect to join
+      router.push(`/trips/join?code=&redirect=${encodeURIComponent(`/trips/${tripId}/preferences`)}`);
+      return;
+    }
+
+    if (!authLoading && user && isMember) {
+      fetchMembers();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, user, memberLoading, isMember, tripId, router]);
+
+  useEffect(() => {
+    if (selectedMemberId) {
+      fetchPreferences();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMemberId, tripId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -195,7 +220,7 @@ export default function PreferencesPage() {
     }));
   };
 
-  if (loading) {
+  if (authLoading || memberLoading || loading) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <div className="text-slate-200">Loading...</div>

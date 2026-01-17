@@ -1,13 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { generateInviteCode } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth';
 
 export default function NewTripPage() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
@@ -20,12 +22,24 @@ export default function NewTripPage() {
     userName: '',
   });
 
+  // Redirect to auth if not logged in
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push(`/auth?redirect=${encodeURIComponent('/trips/new')}`);
+    }
+  }, [authLoading, user, router]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!user) {
+      setError('Please sign in first');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
-    const userId = uuidv4();
     const tripId = uuidv4();
     const inviteCode = generateInviteCode();
 
@@ -42,18 +56,18 @@ export default function NewTripPage() {
           end_date: formData.endDate,
           timezone: formData.timezone,
           invite_code: inviteCode,
-          created_by: userId,
+          created_by: user.id, // Use auth.uid()
         });
 
       if (tripError) {
         throw tripError;
       }
 
-      // Insert creator as trip member
+      // Insert creator as trip member using auth.uid()
       const { error: memberError } = await supabase
         .from('trip_members')
         .insert({
-          id: userId,
+          id: user.id, // Use auth.uid() as the member id
           trip_id: tripId,
           name: formData.userName,
         });
@@ -70,6 +84,18 @@ export default function NewTripPage() {
       setLoading(false);
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-slate-200">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null; // Will redirect in useEffect
+  }
 
   return (
     <div className="min-h-screen bg-slate-900 py-12 px-4">

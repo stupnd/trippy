@@ -1,19 +1,43 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { v4 as uuidv4 } from 'uuid';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth';
 
 export default function JoinTripPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { user, loading: authLoading } = useAuth();
   const [inviteCode, setInviteCode] = useState('');
   const [userName, setUserName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Check if user is authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      const redirect = searchParams.get('redirect') || '/';
+      router.push(`/auth?redirect=${encodeURIComponent(`/trips/join?redirect=${encodeURIComponent(redirect)}`)}`);
+    }
+  }, [authLoading, user, router, searchParams]);
+
+  // Pre-fill invite code from URL if present
+  useEffect(() => {
+    const codeParam = searchParams.get('code');
+    if (codeParam) {
+      setInviteCode(codeParam.toUpperCase());
+    }
+  }, [searchParams]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!user) {
+      setError('Please sign in first');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
@@ -31,14 +55,26 @@ export default function JoinTripPage() {
         return;
       }
 
-      // Generate user ID
-      const userId = uuidv4();
+      // Check if user is already a member
+      const { data: existingMember } = await supabase
+        .from('trip_members')
+        .select('id')
+        .eq('trip_id', trip.id)
+        .eq('id', user.id)
+        .single();
 
-      // Insert user as trip member
+      if (existingMember) {
+        // Already a member, just redirect
+        const redirect = searchParams.get('redirect') || `/trips/${trip.id}`;
+        router.push(redirect);
+        return;
+      }
+
+      // Insert user as trip member using auth.uid()
       const { error: memberError } = await supabase
         .from('trip_members')
         .insert({
-          id: userId,
+          id: user.id, // Use auth.uid() as the member id
           trip_id: trip.id,
           name: userName,
         });
@@ -47,14 +83,27 @@ export default function JoinTripPage() {
         throw memberError;
       }
 
-      // Redirect to trip dashboard
-      router.push(`/trips/${trip.id}`);
+      // Redirect to trip dashboard or specified redirect
+      const redirect = searchParams.get('redirect') || `/trips/${trip.id}`;
+      router.push(redirect);
     } catch (error: any) {
       console.error('Error joining trip:', error);
       setError(error.message || 'Failed to join trip. Please try again.');
       setLoading(false);
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-slate-200">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null; // Will redirect in useEffect
+  }
 
   return (
     <div className="min-h-screen bg-slate-900 py-12 px-4">
