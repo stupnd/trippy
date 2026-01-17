@@ -29,6 +29,8 @@ export default function TripDetailPage() {
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState('');
   const [preferencesUpdatedAt, setPreferencesUpdatedAt] = useState<string | null>(null);
+  const [budgetLoading, setBudgetLoading] = useState(false);
+  const [budgetError, setBudgetError] = useState('');
   const [error, setError] = useState('');
 
   // Auth protection
@@ -298,6 +300,65 @@ export default function TripDetailPage() {
     }
   };
 
+  const maybeUpdateBudget = async (force = false) => {
+    if (!trip || members.length === 0) return;
+
+    const budgetInput = JSON.stringify({
+      tripId,
+      destination_city: trip.destination_city,
+      destination_country: trip.destination_country,
+      start_date: trip.start_date,
+      end_date: trip.end_date,
+      timezone: trip.timezone,
+      members: members.map((m) => ({ id: m.id, name: m.name })),
+      preferencesUpdatedAt,
+    });
+
+    const budgetHash = hashString(budgetInput);
+    const hashKey = `budget_hash_${tripId}`;
+    const previousHash = typeof window !== 'undefined' ? localStorage.getItem(hashKey) : null;
+
+    if (!force && previousHash === budgetHash && trip.budget_min != null && trip.budget_max != null) {
+      return;
+    }
+
+    setBudgetLoading(true);
+    setBudgetError('');
+
+    try {
+      const response = await fetch('/api/generate-trip-budget', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trip_id: tripId }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate trip budget');
+      }
+
+      setTrip((prev) =>
+        prev
+          ? {
+              ...prev,
+              budget_min: data.budget_min,
+              budget_max: data.budget_max,
+              budget_updated_at: data.budget_updated_at,
+            }
+          : prev
+      );
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(hashKey, budgetHash);
+      }
+    } catch (budgetError: any) {
+      console.error('Error generating trip budget:', budgetError);
+      setBudgetError(budgetError.message || 'Failed to generate trip budget');
+    } finally {
+      setBudgetLoading(false);
+    }
+  };
+
   const handleDeleteTrip = async () => {
     if (!trip || !user || user.id !== trip.created_by) return;
     const confirmed = window.confirm(
@@ -372,6 +433,7 @@ export default function TripDetailPage() {
   useEffect(() => {
     if (trip && members.length > 0) {
       maybeUpdateSummary();
+      maybeUpdateBudget();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trip?.id, members.length, preferencesUpdatedAt]);
@@ -431,10 +493,24 @@ export default function TripDetailPage() {
                 <ArrowLeft className="w-4 h-4" />
                 Back to My Trips
               </Link>
-              <h1 className="text-4xl font-bold text-slate-50 mb-1">{trip.name}</h1>
+              <div className="flex flex-wrap items-center gap-3 mb-1">
+                <h1 className="text-4xl font-bold text-slate-50">{trip.name}</h1>
+                <div className="px-3 py-1 rounded-full glass-card text-slate-200 text-sm border border-white/10">
+                  {budgetLoading ? (
+                    <span>Budget: calculating...</span>
+                  ) : trip.budget_min != null && trip.budget_max != null ? (
+                    <span>Budget: ${trip.budget_min} - ${trip.budget_max}</span>
+                  ) : (
+                    <span>Budget: not set</span>
+                  )}
+                </div>
+              </div>
               <p className="text-slate-300">
                 {trip.destination_city}, {trip.destination_country}
               </p>
+              {budgetError && (
+                <p className="text-xs text-red-300 mt-2">{budgetError}</p>
+              )}
             </div>
             <div className="flex gap-3 items-center">
               <Link
