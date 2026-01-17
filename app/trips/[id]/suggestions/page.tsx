@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Sparkles, Plane, Hotel, Target, Calendar } from 'lucide-react';
+import { ArrowLeft, Sparkles, Plane, Hotel, Target, Calendar, Check } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
@@ -422,106 +422,131 @@ export default function SuggestionsPage() {
           </div>
         )}
 
-        {/* Flights Tab - Horizontal Snap Carousel */}
+        {/* Flights Tab - Vertical Stack Layout */}
         {activeTab === 'flights' && (
-          <div className="overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-6 -mx-4 px-4">
-            <div className="flex gap-6 min-w-max">
-              {flights.map((flight) => {
-                const isCheapest = cheapestFlight?.id === flight.id;
-                const isFastest = fastestFlight?.id === flight.id;
-                const voteCount = getVoteCount('flight', flight.id);
-                const userVote = getUserVote('flight', flight.id);
-                const airlineDomain = getAirlineDomain(flight.airline);
-                const isApproved = isApprovedByAll('flight', flight.id);
-                const voteKey = `flight_${flight.id}`;
-                const hasPulse = votingPulse === voteKey;
+          <div className="flex flex-col gap-6">
+            {flights.map((flight) => {
+              const isCheapest = cheapestFlight?.id === flight.id;
+              const isFastest = fastestFlight?.id === flight.id;
+              const voteCount = getVoteCount('flight', flight.id);
+              const userVote = getUserVote('flight', flight.id);
+              const airlineDomain = getAirlineDomain(flight.airline);
+              const isApproved = isApprovedByAll('flight', flight.id);
+              const voteKey = `flight_${flight.id}`;
+              const hasPulse = votingPulse === voteKey;
 
-                return (
-                  <div
-                    key={flight.id}
-                    className={`glass-card p-6 glass-card-hover snap-start min-w-[320px] max-w-[380px] ${
-                      isApproved ? 'golden-state' : ''
-                    } ${hasPulse ? 'voting-pulse' : ''}`}
-                  >
-                  {/* Airline Logo & Price Badge */}
-                  <div className="flex justify-between items-start mb-4">
+              return (
+                <div
+                  key={flight.id}
+                  className={`glass-edge bg-white/5 backdrop-blur-xl rounded-3xl p-6 glass-card-hover ${
+                    isApproved ? 'golden-state' : ''
+                  } ${hasPulse ? 'voting-pulse' : ''}`}
+                >
+                  {/* Top Row: Flight Route + Price + Tags */}
+                  <div className="flex items-start justify-between mb-6">
+                    {/* Origin -> Destination in single line */}
+                    <div className="flex-1 flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <div className="text-2xl font-bold text-slate-50">{flight.departure.airport}</div>
+                        <div className="text-sm text-slate-400">{flight.departure.time}</div>
+                      </div>
+                      <div className="text-slate-500">→</div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-2xl font-bold text-slate-50">{flight.arrival.airport}</div>
+                        <div className="text-sm text-slate-400">{flight.arrival.time}</div>
+                      </div>
+                    </div>
+
+                    {/* Price + Tags in top right */}
+                    <div className="flex items-start gap-4">
+                      {/* Tags as pills in top right */}
+                      {(isCheapest || isFastest) && (
+                        <div className="flex flex-col gap-2">
+                          {isCheapest && (
+                            <span className="text-xs bg-emerald-500/20 text-emerald-300 px-3 py-1.5 rounded-full border border-emerald-500/30 font-medium">
+                              Cheapest
+                            </span>
+                          )}
+                          {isFastest && (
+                            <span className="text-xs bg-blue-500/20 text-blue-300 px-3 py-1.5 rounded-full border border-blue-500/30 font-medium">
+                              Fastest
+                            </span>
+                          )}
+                          {isCheapest && isFastest && (
+                            <span className="text-xs bg-amber-500/20 text-amber-300 px-3 py-1.5 rounded-full border border-amber-500/30 font-medium">
+                              Best Value
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      <div className="text-right">
+                        <div className="text-3xl font-extrabold text-slate-50">${flight.price}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Middle Row: Airline Info */}
+                  <div className="flex items-center gap-3 mb-6">
                     <img
                       src={`https://logo.clearbit.com/${airlineDomain}`}
                       alt={flight.airline}
-                      className="h-8 w-8 rounded"
+                      className="h-6 w-6 rounded"
                       onError={(e) => {
                         (e.target as HTMLImageElement).style.display = 'none';
                       }}
                     />
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-slate-50">${flight.price}</div>
-                      {(isCheapest || isFastest) && (
-                        <span className="text-xs bg-green-600 text-white px-2 py-1 rounded-full mt-1">
-                          {isCheapest && isFastest ? 'Best Value' : isCheapest ? 'Cheapest' : 'Fastest'}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Flight Details */}
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <div>
-                        <div className="text-lg font-semibold text-slate-50">{flight.departure.airport}</div>
-                        <div className="text-sm text-slate-400">{flight.departure.time}</div>
-                      </div>
-                      <div className="text-slate-400">→</div>
-                      <div className="text-right">
-                        <div className="text-lg font-semibold text-slate-50">{flight.arrival.airport}</div>
-                        <div className="text-sm text-slate-400">{flight.arrival.time}</div>
-                      </div>
-                    </div>
-                    <div className="text-sm text-slate-400 mt-2">
+                    <div className="text-sm text-slate-300">
                       {flight.airline} • {flight.duration}
-                      {flight.layovers > 0 && ` • ${flight.layovers} layover${flight.layovers > 1 ? 's' : ''}`}
+                      {flight.layovers > 0 && ` • ${flight.layovers} layover${flight.layovers > 1 ? 's' : ''} ${flight.layoverAirports.join(', ')}`}
                     </div>
                   </div>
 
-                  {/* Vote Count */}
-                  <div className="text-sm text-slate-400 mb-4">
-                    {voteCount}/{membersCount} members approve
-                  </div>
+                  {/* Bottom Row: Vote Count + Action Buttons */}
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="text-sm text-slate-400">
+                      {voteCount}/{membersCount} members approve
+                    </div>
 
-                    {/* Action Buttons */}
-                    <div className="flex gap-2">
+                    <div className="flex gap-3">
+                      {/* Approve Button - Emerald Gradient with Checkmark */}
                       <button
                         onClick={() => handleVote('flight', flight.id, true)}
-                        className={`flex-1 px-4 py-2 rounded-xl font-semibold transition-all glass-card-hover ${
+                        className={`px-6 py-3 rounded-2xl font-semibold transition-all flex items-center gap-2 ${
                           userVote === true
-                            ? 'bg-green-500/30 text-green-300 border border-green-500/50'
-                            : 'bg-white/5 text-slate-200 hover:bg-green-500/20 hover:text-green-300 border border-white/10'
+                            ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30'
+                            : 'bg-white/5 text-slate-300 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-teal-600 hover:text-white hover:shadow-lg hover:shadow-emerald-500/30 border border-white/10'
                         }`}
                       >
-                        ✓ Approve
+                        <Check className={`w-5 h-5 ${userVote === true ? 'text-white' : 'text-emerald-400'}`} strokeWidth={2.5} />
+                        Approve
                       </button>
+
+                      {/* Reject Button - Ghost with border */}
                       <button
                         onClick={() => handleVote('flight', flight.id, false)}
-                        className={`flex-1 px-4 py-2 rounded-xl font-semibold transition-all glass-card-hover ${
+                        className={`px-6 py-3 rounded-2xl font-semibold transition-all border ${
                           userVote === false
-                            ? 'bg-red-500/30 text-red-300 border border-red-500/50'
-                            : 'bg-white/5 text-slate-200 hover:bg-red-500/20 hover:text-red-300 border border-white/10'
+                            ? 'bg-red-500/20 text-red-300 border-red-500/50'
+                            : 'bg-transparent text-red-400 border-red-500/50 hover:bg-red-500/20 hover:text-red-300'
                         }`}
                       >
-                        ✗ Reject
+                        Reject
                       </button>
+
+                      {/* Book Button - Purple/Blue Gradient with Neon Shadow */}
                       <a
                         href={flight.link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all glass-card-hover"
+                        className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-violet-700 text-white rounded-2xl font-semibold hover:from-indigo-700 hover:to-violet-800 transition-all shadow-lg shadow-violet-600/40 hover:shadow-xl hover:shadow-violet-600/50"
                       >
                         Book
                       </a>
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              );
+            })}
           </div>
         )}
 
