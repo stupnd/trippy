@@ -88,6 +88,25 @@ export async function POST(request: NextRequest) {
     }
 
     const destination = `${trip.destination_city || 'Unknown'}, ${trip.destination_country || 'Unknown'}`;
+    const startDate = trip.start_date ? new Date(trip.start_date) : null;
+    const endDate = trip.end_date ? new Date(trip.end_date) : null;
+    let tripNights = 3;
+    if (startDate && endDate && !isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
+      const diffMs = endDate.getTime() - startDate.getTime();
+      const diffDays = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+      tripNights = diffDays;
+    }
+
+    const lodgingMin = Math.round(tripNights * accommodationBudgetMin);
+    const lodgingMax = Math.round(tripNights * accommodationBudgetMax);
+    const flightsMin = 200;
+    const flightsMax = 900;
+    const activitiesMin = Math.round(tripNights * 40);
+    const activitiesMax = Math.round(tripNights * 120);
+    const miscMin = 100;
+    const miscMax = 300;
+    const baselineMin = lodgingMin + flightsMin + activitiesMin + miscMin;
+    const baselineMax = lodgingMax + flightsMax + activitiesMax + miscMax;
 
     const prompt = `Estimate a realistic total trip budget range per person in USD for a group trip.
 
@@ -96,10 +115,18 @@ Trip:
 - Dates: ${trip.start_date || 'TBD'} to ${trip.end_date || 'TBD'}
 - Timezone: ${trip.timezone || 'Unknown'}
 - Travelers: ${membersList.length || 1}
+- Trip length: ${tripNights} night(s)
 
 Preferences:
 - Accommodation budget range per night: $${accommodationBudgetMin}-$${accommodationBudgetMax}
 - Activity interests: ${activityInterests.length ? activityInterests.join(', ') : 'General'}
+
+Baseline estimate (per person, USD):
+- Flights: $${flightsMin}-$${flightsMax}
+- Lodging: $${lodgingMin}-$${lodgingMax} (${tripNights} nights)
+- Activities: $${activitiesMin}-$${activitiesMax}
+- Misc: $${miscMin}-$${miscMax}
+- Total baseline: $${baselineMin}-$${baselineMax}
 
 Return ONLY valid JSON:
 {
@@ -110,7 +137,8 @@ Return ONLY valid JSON:
 Rules:
 - Provide integers (no decimals).
 - budget_min must be <= budget_max.
-- Keep the range realistic for the trip length and destination.`;
+- Keep the range realistic for the trip length and destination.
+- Stay within 20% of the baseline total unless the destination is unusually expensive or cheap.`;
 
     const genAI = new GoogleGenerativeAI(geminiApiKey);
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
@@ -144,11 +172,16 @@ Rules:
       );
     }
 
+    const minClamp = Math.round(baselineMin * 0.8);
+    const maxClamp = Math.round(baselineMax * 1.2);
+    const finalBudgetMin = Math.min(Math.max(budgetMin, minClamp), maxClamp);
+    const finalBudgetMax = Math.min(Math.max(budgetMax, minClamp), maxClamp);
+
     const { data: updatedTrip, error: updateError } = await supabase
       .from('trips')
       .update({
-        budget_min: budgetMin,
-        budget_max: budgetMax,
+        budget_min: finalBudgetMin,
+        budget_max: finalBudgetMax,
         budget_updated_at: new Date().toISOString(),
       })
       .eq('id', trip_id)
@@ -164,8 +197,8 @@ Rules:
 
     return NextResponse.json({
       success: true,
-      budget_min: updatedTrip?.budget_min ?? budgetMin,
-      budget_max: updatedTrip?.budget_max ?? budgetMax,
+      budget_min: updatedTrip?.budget_min ?? finalBudgetMin,
+      budget_max: updatedTrip?.budget_max ?? finalBudgetMax,
       budget_updated_at: updatedTrip?.budget_updated_at,
     });
   } catch (error: any) {
