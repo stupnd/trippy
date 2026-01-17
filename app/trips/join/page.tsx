@@ -55,51 +55,42 @@ export default function JoinTripPage() {
         return;
       }
 
-      // Check if user is already a member (using maybeSingle to avoid error when not found)
-      const { data: existingMember, error: checkError } = await supabase
+      // Use upsert to prevent 409 conflicts - will insert if new, update if exists
+      // Let Supabase handle the primary key (id) - do NOT pass id manually
+      // Matches the unique constraint on (trip_id, user_id)
+      const { data, error: memberError } = await supabase
         .from('trip_members')
-        .select('id')
-        .eq('trip_id', trip.id)
-        .eq('id', user.id)
-        .maybeSingle();
-
-      // If there's an unexpected error during check, throw it
-      if (checkError && checkError.code !== 'PGRST116') {
-        throw checkError;
-      }
-
-      // If user is already a member, redirect without inserting
-      if (existingMember) {
-        const redirect = searchParams.get('redirect') || `/trips/${trip.id}`;
-        router.push(redirect);
-        setLoading(false);
-        return;
-      }
-
-      // Insert user as trip member using auth.uid() as the id
-      const { error: memberError } = await supabase
-        .from('trip_members')
-        .insert({
-          id: user.id, // Use auth.uid() as the primary key (member id)
-          trip_id: trip.id,
-          name: userName,
-        });
+        .upsert(
+          {
+            trip_id: trip.id,
+            user_id: user.id,
+            name: userName,
+          },
+          {
+            onConflict: 'trip_id, user_id', // Matches unique constraint on (trip_id, user_id)
+          }
+        );
 
       if (memberError) {
-        // Handle case where insert fails due to duplicate (race condition)
+        // If error is 23505 (unique constraint violation), user is already a member
+        // Just proceed to redirect instead of showing error
         if (memberError.code === '23505') {
-          // Duplicate key - user was added between check and insert, just redirect
-          const redirect = searchParams.get('redirect') || `/trips/${trip.id}`;
-          router.push(redirect);
+          console.error('Unique constraint violation on trip_members (user already joined):', {
+            trip_id: trip.id,
+            user_id: user.id,
+            error: memberError.message,
+            code: memberError.code,
+          });
+          // User is already a member, redirect to home dashboard to see all trips
+          router.push('/');
           setLoading(false);
           return;
         }
         throw memberError;
       }
 
-      // Redirect to trip dashboard or specified redirect
-      const redirect = searchParams.get('redirect') || `/trips/${trip.id}`;
-      router.push(redirect);
+      // Redirect to home dashboard after successful upsert to show all trips
+      router.push('/');
     } catch (error: any) {
       console.error('Error joining trip:', error);
       setError(error.message || 'Failed to join trip. Please try again.');

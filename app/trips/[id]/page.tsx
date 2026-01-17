@@ -45,16 +45,22 @@ export default function TripDetailPage() {
 
   const fetchDashboardData = async () => {
     try {
-      // Fetch trip from Supabase
+      // Fetch trip from Supabase - use maybeSingle to avoid 406 when trip doesn't exist
       const { data: tripData, error: tripError } = await supabase
         .from('trips')
         .select('*')
         .eq('id', tripId)
-        .single();
+        .maybeSingle();
 
-      if (tripError || !tripData) {
-        setError('Trip not found');
-        setLoading(false);
+      // If trip not found, redirect to join page
+      if (tripError && tripError.code !== 'PGRST116') {
+        // Unexpected error
+        throw tripError;
+      }
+
+      if (!tripData) {
+        // Trip not found - redirect to join page
+        router.push(`/trips/join?redirect=${encodeURIComponent(`/trips/${tripId}`)}`);
         return;
       }
 
@@ -91,9 +97,28 @@ export default function TripDetailPage() {
       );
 
       setMembers(membersWithStatus);
+
+      // After fetching, check if user is actually a member
+      // If not found in members list, redirect to join
+      if (user && membersWithStatus.length > 0) {
+        // Check using user_id column (not id, which is the primary key)
+        const userIsMember = membersWithStatus.some(m => {
+          // Check both id and user_id for backwards compatibility
+          return (m as any).user_id === user.id || m.id === user.id;
+        });
+        if (!userIsMember) {
+          router.push(`/trips/join?code=&redirect=${encodeURIComponent(`/trips/${tripId}`)}`);
+          return;
+        }
+      }
     } catch (error: any) {
       console.error('Error fetching dashboard data:', error);
       setError(error.message || 'Failed to load trip');
+      // If error fetching trip and user is authenticated, redirect to join
+      if (user && error.code === 'PGRST116') {
+        router.push(`/trips/join?redirect=${encodeURIComponent(`/trips/${tripId}`)}`);
+        return;
+      }
     } finally {
       setLoading(false);
     }
@@ -323,7 +348,7 @@ export default function TripDetailPage() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <Link
             href={`/trips/${tripId}/preferences`}
             className="card-surface rounded-lg p-6 hover:bg-slate-700 transition-colors"
@@ -335,6 +360,21 @@ export default function TripDetailPage() {
               Tell us what you want for this trip
             </p>
           </Link>
+
+          <Link
+            href={`/trips/${tripId}/suggestions`}
+            className="card-surface rounded-lg p-6 hover:bg-slate-700 transition-colors"
+          >
+            <h3 className="text-xl font-semibold mb-2 text-slate-50">
+              ✨ AI Suggestions
+            </h3>
+            <p className="text-slate-300 text-sm">
+              View AI-generated recommendations for flights, stays, and activities
+            </p>
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
           <div className="card-surface rounded-lg p-6">
             <h3 className="text-xl font-semibold mb-4 text-slate-50">

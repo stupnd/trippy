@@ -39,7 +39,7 @@ export default function Home() {
       const { data: memberships, error: membersError } = await supabase
         .from('trip_members')
         .select('trip_id, joined_at, name')
-        .eq('id', user!.id)
+        .eq('user_id', user!.id) // Use user_id column, not id
         .order('joined_at', { ascending: false });
 
       if (membersError) throw membersError;
