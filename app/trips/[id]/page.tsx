@@ -23,6 +23,7 @@ export default function TripDetailPage() {
   const [members, setMembers] = useState<MemberWithStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
 
   // Auth protection
@@ -151,6 +152,49 @@ export default function TripDetailPage() {
 
   const membersWithPreferences = members.filter((m) => m.hasPreferences).length;
   const canGenerate = membersWithPreferences > 0;
+  const isCreator = !!user && !!trip && user.id === trip.created_by;
+
+  const handleDeleteTrip = async () => {
+    if (!trip || !user || user.id !== trip.created_by) return;
+    const confirmed = window.confirm(
+      'Delete this trip for everyone? This cannot be undone.'
+    );
+    if (!confirmed) return;
+
+    setDeleting(true);
+    setError('');
+
+    try {
+      const { error: preferencesError } = await supabase
+        .from('user_preferences')
+        .delete()
+        .eq('trip_id', tripId);
+      if (preferencesError) throw preferencesError;
+
+      const { error: membersError } = await supabase
+        .from('trip_members')
+        .delete()
+        .eq('trip_id', tripId);
+      if (membersError) throw membersError;
+
+      const { error: tripError } = await supabase
+        .from('trips')
+        .delete()
+        .eq('id', tripId);
+      if (tripError) throw tripError;
+
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(`suggestions_${tripId}`);
+        localStorage.removeItem(`votes_${tripId}`);
+      }
+
+      router.push('/');
+    } catch (deleteError: any) {
+      console.error('Error deleting trip:', deleteError);
+      setError(deleteError.message || 'Failed to delete trip');
+      setDeleting(false);
+    }
+  };
 
   if (authLoading || memberLoading || loading) {
     return (
@@ -232,6 +276,15 @@ export default function TripDetailPage() {
               >
                 Share Overview
               </Link>
+              {isCreator && (
+                <button
+                  onClick={handleDeleteTrip}
+                  disabled={deleting}
+                  className="bg-red-700 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {deleting ? 'Deleting...' : 'Delete Trip'}
+                </button>
+              )}
               <button
                 onClick={async () => {
                   await signOut();
@@ -247,6 +300,11 @@ export default function TripDetailPage() {
       </div>
 
       <div className="container mx-auto px-4 py-8 max-w-7xl">
+        {error && (
+          <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded-lg mb-6">
+            {error}
+          </div>
+        )}
         {/* Generate Button */}
         {canGenerate && (
           <div className="mb-6 flex justify-center">
