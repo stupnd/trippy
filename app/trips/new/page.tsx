@@ -67,8 +67,8 @@ export default function NewTripPage() {
       const { error: memberError } = await supabase
         .from('trip_members')
         .insert({
-          id: user.id, // Use auth.uid() as the member id
           trip_id: tripId,
+          user_id: user.id,
           name: formData.userName,
         });
 
