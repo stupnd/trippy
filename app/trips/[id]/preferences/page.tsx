@@ -190,6 +190,7 @@ export default function PreferencesPage() {
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
       updateTripSummary();
+      updateTripBudget();
     } catch (error: any) {
       console.error('Error saving preferences:', error);
       setError(error.message || 'Failed to save preferences');
@@ -277,6 +278,18 @@ export default function PreferencesPage() {
       });
     } catch (summaryError) {
       console.error('Error updating trip summary:', summaryError);
+    }
+  };
+
+  const updateTripBudget = async () => {
+    try {
+      await fetch('/api/generate-trip-budget', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trip_id: tripId }),
+      });
+    } catch (budgetError) {
+      console.error('Error updating trip budget:', budgetError);
     }
   };
 

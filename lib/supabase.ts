@@ -23,6 +23,9 @@ export interface TripRow {
   created_by: string;
   summary?: string | null;
   summary_updated_at?: string | null;
+  budget_min?: number | null;
+  budget_max?: number | null;
+  budget_updated_at?: string | null;
 }
 
 export interface TripMemberRow {
