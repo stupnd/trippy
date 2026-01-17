@@ -250,25 +250,6 @@ export default function PreferencesPage() {
           <h1 className="text-3xl font-bold text-slate-50">User Preferences</h1>
         </div>
 
-        {/* Member Selection */}
-        <div className="card-surface rounded-lg p-6 mb-6">
-          <label className="block text-sm font-medium text-slate-200 mb-2">
-            Select member
-          </label>
-          <select
-            value={selectedMemberId}
-            onChange={(e) => setSelectedMemberId(e.target.value)}
-            className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">Select a member</option>
-            {members.map((member) => (
-              <option key={member.id} value={member.id}>
-                {member.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
         {selectedMemberId && (
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Budget Preferences */}
