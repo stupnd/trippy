@@ -24,6 +24,7 @@ export default function TripDetailPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const [error, setError] = useState('');
 
   // Auth protection
@@ -196,6 +197,35 @@ export default function TripDetailPage() {
     }
   };
 
+  const handleLeaveTrip = async () => {
+    if (!user || !trip || user.id === trip.created_by) return;
+    const confirmed = window.confirm('Leave this trip? You can rejoin with the invite code.');
+    if (!confirmed) return;
+
+    setLeaving(true);
+    setError('');
+
+    try {
+      const { error: leaveError } = await supabase
+        .from('trip_members')
+        .delete()
+        .eq('trip_id', tripId)
+        .eq('user_id', user.id);
+      if (leaveError) throw leaveError;
+
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(`suggestions_${tripId}`);
+        localStorage.removeItem(`votes_${tripId}`);
+      }
+
+      router.push('/');
+    } catch (leaveError: any) {
+      console.error('Error leaving trip:', leaveError);
+      setError(leaveError.message || 'Failed to leave trip');
+      setLeaving(false);
+    }
+  };
+
   if (authLoading || memberLoading || loading) {
     return (
       <div className="min-h-screen bg-slate-900 py-8">
@@ -285,15 +315,15 @@ export default function TripDetailPage() {
                   {deleting ? 'Deleting...' : 'Delete Trip'}
                 </button>
               )}
-              <button
-                onClick={async () => {
-                  await signOut();
-                  router.push('/');
-                }}
-                className="bg-red-700 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors"
-              >
-                Sign Out
-              </button>
+              {!isCreator && (
+                <button
+                  onClick={handleLeaveTrip}
+                  disabled={leaving}
+                  className="bg-slate-700 text-slate-200 px-4 py-2 rounded-lg hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {leaving ? 'Leaving...' : 'Leave Trip'}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -380,28 +410,28 @@ export default function TripDetailPage() {
           <ModuleCard
             title="✈️ Flights"
             status={getModuleStatus('flights')}
-            href={`/trips/${tripId}/flights`}
+            href={`/trips/${tripId}/suggestions?tab=flights`}
           />
 
           {/* Accommodations Card */}
           <ModuleCard
             title="🏨 Accommodations"
             status={getModuleStatus('accommodations')}
-            href={`/trips/${tripId}/accommodation`}
+            href={`/trips/${tripId}/suggestions?tab=stays`}
           />
 
           {/* Activities Card */}
           <ModuleCard
             title="🎯 Activities"
             status={getModuleStatus('activities')}
-            href={`/trips/${tripId}/activities`}
+            href={`/trips/${tripId}/suggestions?tab=activities`}
           />
 
           {/* Itinerary Card */}
           <ModuleCard
             title="📅 Itinerary"
             status={getModuleStatus('itinerary')}
-            href={`/trips/${tripId}/itinerary`}
+            href={`/trips/${tripId}/suggestions?tab=activities`}
           />
         </div>
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
@@ -55,6 +55,7 @@ type TabType = 'flights' | 'stays' | 'activities';
 export default function SuggestionsPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const tripId = params.id as string;
   const { user, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('flights');
@@ -77,6 +78,13 @@ export default function SuggestionsPage() {
       fetchMembersCount();
     }
   }, [authLoading, user, tripId, router]);
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab') as TabType | null;
+    if (tabParam && ['flights', 'stays', 'activities'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
 
   const fetchMembersCount = async () => {
     try {
