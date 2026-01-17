@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Sparkles, Plane, Hotel, Target, Calendar } from 'lucide-react';
@@ -69,6 +69,7 @@ export default function SuggestionsPage() {
   const [membersCount, setMembersCount] = useState(0);
   const [votingPulse, setVotingPulse] = useState<string | null>(null);
   const [approvedItems, setApprovedItems] = useState<Set<string>>(new Set());
+  const summaryUpdateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -159,6 +160,7 @@ export default function SuggestionsPage() {
       setSuggestions(data);
       // Cache suggestions
       localStorage.setItem(`suggestions_${tripId}`, JSON.stringify(data));
+      scheduleSummaryUpdate(votes);
     } catch (err: any) {
       console.error('Error generating suggestions:', err);
       setError(err.message || 'Failed to generate suggestions');
@@ -182,6 +184,7 @@ export default function SuggestionsPage() {
     setVotes(newVotes);
     // Save to localStorage (MVP) - in production, save to Supabase votes table
     localStorage.setItem(`votes_${tripId}`, JSON.stringify(newVotes));
+    scheduleSummaryUpdate(newVotes);
 
     // Voting pulse animation
     setVotingPulse(voteKey);
@@ -222,6 +225,58 @@ export default function SuggestionsPage() {
   const isApprovedByAll = (optionType: 'flight' | 'accommodation' | 'activity', optionId: string): boolean => {
     if (membersCount === 0) return false;
     return getVoteCount(optionType, optionId) === membersCount;
+  };
+
+  const getVoteCountFrom = (
+    allVotes: Record<string, Record<string, boolean>>,
+    optionType: 'flight' | 'accommodation' | 'activity',
+    optionId: string
+  ) => {
+    const voteKey = `${optionType}_${optionId}`;
+    const optionVotes = allVotes[voteKey] || {};
+    return Object.values(optionVotes).filter(Boolean).length;
+  };
+
+  const scheduleSummaryUpdate = (allVotes: Record<string, Record<string, boolean>>) => {
+    if (!suggestions || membersCount === 0) return;
+
+    if (summaryUpdateTimer.current) {
+      clearTimeout(summaryUpdateTimer.current);
+    }
+
+    summaryUpdateTimer.current = setTimeout(async () => {
+      const approvedFlights = flights.filter(
+        (flight) => getVoteCountFrom(allVotes, 'flight', flight.id) === membersCount
+      );
+      const approvedStays = accommodations.filter(
+        (stay) => getVoteCountFrom(allVotes, 'accommodation', stay.id) === membersCount
+      );
+      const approvedActivities = activities.filter(
+        (activity) => getVoteCountFrom(allVotes, 'activity', activity.id) === membersCount
+      );
+
+      try {
+        await fetch('/api/generate-trip-summary', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            trip_id: tripId,
+            approved: {
+              flights: approvedFlights,
+              accommodations: approvedStays,
+              activities: approvedActivities,
+            },
+            available_counts: {
+              flights: flights.length,
+              accommodations: accommodations.length,
+              activities: activities.length,
+            },
+          }),
+        });
+      } catch (err) {
+        console.error('Error updating trip summary:', err);
+      }
+    }, 800);
   };
 
   const getUserVote = (optionType: 'flight' | 'accommodation' | 'activity', optionId: string): boolean | null => {

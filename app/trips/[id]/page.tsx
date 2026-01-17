@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { ArrowLeft, Plane, Hotel, Target, Calendar, Settings, Sparkles, Share2, Trash2, LogOut, Users, Circle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth, useTripMember } from '@/lib/auth';
-import { TripRow, TripMemberRow, UserPreferencesRow } from '@/lib/supabase';
+import { TripRow, TripMemberRow } from '@/lib/supabase';
 
 interface MemberWithStatus extends TripMemberRow {
   hasPreferences: boolean;
@@ -18,7 +18,7 @@ export default function TripDetailPage() {
   const params = useParams();
   const router = useRouter();
   const tripId = params.id as string;
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { isMember, loading: memberLoading } = useTripMember(tripId);
   const [trip, setTrip] = useState<TripRow | null>(null);
   const [members, setMembers] = useState<MemberWithStatus[]>([]);
@@ -26,6 +26,9 @@ export default function TripDetailPage() {
   const [generating, setGenerating] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState('');
+  const [preferencesUpdatedAt, setPreferencesUpdatedAt] = useState<string | null>(null);
   const [error, setError] = useState('');
 
   // Auth protection
@@ -74,7 +77,7 @@ export default function TripDetailPage() {
 
       const { data: preferencesData, error: preferencesError } = await supabase
         .from('user_preferences')
-        .select('member_id')
+        .select('member_id, updated_at')
         .eq('trip_id', tripId);
 
       if (preferencesError) throw preferencesError;
@@ -92,6 +95,16 @@ export default function TripDetailPage() {
 
       setMembers(membersWithStatus);
 
+      const latestPreferenceUpdate =
+        (preferencesData || [])
+          .map((p) => p.updated_at)
+          .filter((value): value is string => !!value)
+          .sort()
+          .pop() || null;
+      setPreferencesUpdatedAt(latestPreferenceUpdate);
+
+      // After fetching, check if user is actually a member
+      // If not found in members list, redirect to join
       if (user && membersWithStatus.length > 0) {
         const userIsMember = membersWithStatus.some(m => {
           return (m as any).user_id === user.id || m.id === user.id;
@@ -137,6 +150,153 @@ export default function TripDetailPage() {
   const membersWithPreferences = members.filter((m) => m.hasPreferences).length;
   const canGenerate = membersWithPreferences > 0;
   const isCreator = !!user && !!trip && user.id === trip.created_by;
+
+  const hashString = (value: string) => {
+    let hash = 5381;
+    for (let i = 0; i < value.length; i += 1) {
+      hash = (hash * 33) ^ value.charCodeAt(i);
+    }
+    return (hash >>> 0).toString(16);
+  };
+
+  const getApprovedItemsFromCache = () => {
+    if (typeof window === 'undefined' || members.length === 0) {
+      return {
+        flights: [],
+        accommodations: [],
+        activities: [],
+        counts: { flights: 0, accommodations: 0, activities: 0 },
+      };
+    }
+
+    const suggestionsRaw = localStorage.getItem(`suggestions_${tripId}`);
+    const votesRaw = localStorage.getItem(`votes_${tripId}`);
+    if (!suggestionsRaw) {
+      return {
+        flights: [],
+        accommodations: [],
+        activities: [],
+        counts: { flights: 0, accommodations: 0, activities: 0 },
+      };
+    }
+
+    let suggestions;
+    try {
+      suggestions = JSON.parse(suggestionsRaw);
+    } catch {
+      return {
+        flights: [],
+        accommodations: [],
+        activities: [],
+        counts: { flights: 0, accommodations: 0, activities: 0 },
+      };
+    }
+
+    let votes: Record<string, Record<string, boolean>> = {};
+    if (votesRaw) {
+      try {
+        votes = JSON.parse(votesRaw);
+      } catch {
+        votes = {};
+      }
+    }
+
+    const membersCount = members.length;
+    const voteCountFor = (key: string) => {
+      const optionVotes = votes[key] || {};
+      return Object.values(optionVotes).filter(Boolean).length;
+    };
+
+    const flights = suggestions?.suggestions?.flights || [];
+    const accommodations = suggestions?.suggestions?.accommodations || [];
+    const activities = suggestions?.suggestions?.activities || [];
+
+    return {
+      flights: flights.filter((item: any) => voteCountFor(`flight_${item.id}`) === membersCount),
+      accommodations: accommodations.filter((item: any) => voteCountFor(`accommodation_${item.id}`) === membersCount),
+      activities: activities.filter((item: any) => voteCountFor(`activity_${item.id}`) === membersCount),
+      counts: {
+        flights: flights.length,
+        accommodations: accommodations.length,
+        activities: activities.length,
+      },
+    };
+  };
+
+  const maybeUpdateSummary = async (force = false) => {
+    if (!trip || members.length === 0) return;
+
+    const approved = getApprovedItemsFromCache();
+    const summaryInput = JSON.stringify({
+      tripId,
+      trip: {
+        destination_city: trip.destination_city,
+        destination_country: trip.destination_country,
+        start_date: trip.start_date,
+        end_date: trip.end_date,
+        timezone: trip.timezone,
+      },
+      members: members.map((m) => ({ id: m.id, name: m.name })),
+      preferencesUpdatedAt,
+      approvedIds: {
+        flights: approved.flights.map((item: any) => item.id),
+        accommodations: approved.accommodations.map((item: any) => item.id),
+        activities: approved.activities.map((item: any) => item.id),
+      },
+      counts: approved.counts,
+    });
+
+    const summaryHash = hashString(summaryInput);
+    const hashKey = `summary_hash_${tripId}`;
+    const previousHash = typeof window !== 'undefined' ? localStorage.getItem(hashKey) : null;
+
+    if (!force && previousHash === summaryHash && trip.summary) {
+      return;
+    }
+
+    setSummaryLoading(true);
+    setSummaryError('');
+
+    try {
+      const response = await fetch('/api/generate-trip-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          trip_id: tripId,
+          approved: {
+            flights: approved.flights,
+            accommodations: approved.accommodations,
+            activities: approved.activities,
+          },
+          available_counts: approved.counts,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate trip summary');
+      }
+
+      setTrip((prev) =>
+        prev
+          ? {
+              ...prev,
+              summary: data.summary,
+              summary_updated_at: data.summary_updated_at,
+            }
+          : prev
+      );
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(hashKey, summaryHash);
+      }
+    } catch (summaryError: any) {
+      console.error('Error generating trip summary:', summaryError);
+      setSummaryError(summaryError.message || 'Failed to generate trip summary');
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
 
   const handleDeleteTrip = async () => {
     if (!trip || !user || user.id !== trip.created_by) return;
@@ -208,6 +368,13 @@ export default function TripDetailPage() {
       setLeaving(false);
     }
   };
+
+  useEffect(() => {
+    if (trip && members.length > 0) {
+      maybeUpdateSummary();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trip?.id, members.length, preferencesUpdatedAt]);
 
   if (authLoading || memberLoading || loading) {
     return (
@@ -419,8 +586,41 @@ export default function TripDetailPage() {
           </Link>
         </div>
 
-        {/* Module Cards - Bento Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
+        {/* Trip Summary */}
+        <div className="card-surface rounded-lg p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-slate-50">Trip Summary</h2>
+            <button
+              onClick={() => maybeUpdateSummary(true)}
+              disabled={summaryLoading}
+              className="px-4 py-2 text-sm bg-slate-700 text-slate-200 rounded-lg hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {summaryLoading ? 'Updating...' : 'Refresh Summary'}
+            </button>
+          </div>
+          {summaryError && (
+            <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded-lg mb-4">
+              {summaryError}
+            </div>
+          )}
+          {summaryLoading && !trip.summary && (
+            <div className="text-slate-300">Generating summary...</div>
+          )}
+          {!summaryLoading && trip.summary && (
+            <p className="text-slate-300 leading-relaxed whitespace-pre-line">
+              {trip.summary}
+            </p>
+          )}
+          {!summaryLoading && !trip.summary && !summaryError && (
+            <p className="text-slate-400">
+              Summary will appear here once generated.
+            </p>
+          )}
+        </div>
+
+        {/* Progress Overview - Module Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          {/* Flights Card */}
           <ModuleCard
             title="Flights"
             icon={Plane}
