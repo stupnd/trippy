@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { ArrowLeft, Sparkles, Plane, Hotel, Target, Calendar } from 'lucide-react';
+import confetti from 'canvas-confetti';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 
@@ -65,6 +67,8 @@ export default function SuggestionsPage() {
   const [error, setError] = useState('');
   const [votes, setVotes] = useState<Record<string, Record<string, boolean>>>({}); // optionId -> userId -> approved
   const [membersCount, setMembersCount] = useState(0);
+  const [votingPulse, setVotingPulse] = useState<string | null>(null);
+  const [approvedItems, setApprovedItems] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -179,6 +183,26 @@ export default function SuggestionsPage() {
     // Save to localStorage (MVP) - in production, save to Supabase votes table
     localStorage.setItem(`votes_${tripId}`, JSON.stringify(newVotes));
 
+    // Voting pulse animation
+    setVotingPulse(voteKey);
+    setTimeout(() => setVotingPulse(null), 600);
+
+    // Check if approved by all members
+    const newVoteCount = Object.values(newVotes[voteKey] || {}).filter(Boolean).length;
+    if (newVoteCount === membersCount && membersCount > 0) {
+      // Approval celebration with confetti
+      const itemKey = `${optionType}_${optionId}`;
+      if (!approvedItems.has(itemKey)) {
+        setApprovedItems(new Set([...approvedItems, itemKey]));
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#fbbf24', '#fcd34d', '#fde047'], // Gold colors
+        });
+      }
+    }
+
     // TODO: In production, save to Supabase:
     // await supabase.from('votes').upsert({
     //   trip_id: tripId,
@@ -221,16 +245,16 @@ export default function SuggestionsPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-slate-900 py-8">
+      <div className="min-h-screen py-8">
         <div className="container mx-auto px-4 max-w-7xl">
-          <div className="h-12 bg-slate-800 rounded-lg w-64 mb-8 animate-pulse"></div>
+          <div className="h-12 bg-white/5 rounded-3xl w-64 mb-8 shimmer-loader"></div>
           <div className="grid grid-cols-3 gap-4 mb-8">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-12 bg-slate-800 rounded-lg animate-pulse"></div>
+              <div key={i} className="h-12 bg-white/5 rounded-3xl shimmer-loader"></div>
             ))}
           </div>
-          <div className="card-surface rounded-lg p-12 text-center">
-            <div className="h-8 bg-slate-700 rounded-lg w-64 mx-auto animate-pulse"></div>
+          <div className="glass-card p-12 text-center">
+            <div className="h-8 bg-white/5 rounded-3xl w-64 mx-auto shimmer-loader"></div>
           </div>
         </div>
       </div>
@@ -242,12 +266,13 @@ export default function SuggestionsPage() {
     return (
       <div className="min-h-screen bg-slate-900 py-8">
         <div className="container mx-auto px-4 max-w-7xl">
-          <Link href={`/trips/${tripId}`} className="text-blue-400 hover:text-blue-300 mb-4 inline-block underline">
-            ← Back to Trip
+          <Link href={`/trips/${tripId}`} className="text-blue-400 hover:text-blue-300 mb-4 inline-flex items-center gap-2 transition-colors">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Trip
           </Link>
 
-          <div className="card-surface rounded-2xl p-16 text-center shadow-xl">
-            <div className="text-6xl mb-6">✨</div>
+          <div className="glass-card p-16 text-center">
+            <Sparkles className="w-16 h-16 text-purple-400 mx-auto mb-6 opacity-80" />
             <h1 className="text-4xl font-bold text-slate-50 mb-4">Generate Group Recommendations</h1>
             <p className="text-slate-300 mb-8 max-w-2xl mx-auto">
               Get AI-powered suggestions for flights, accommodations, and activities based on your group's preferences
@@ -255,9 +280,22 @@ export default function SuggestionsPage() {
             <button
               onClick={handleGenerate}
               disabled={generating}
-              className="bg-blue-600 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-3xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 transition-all glass-card-hover disabled:opacity-50 disabled:cursor-not-allowed shadow-lg flex items-center gap-2 mx-auto"
             >
-              {generating ? '✨ Generating...' : '✨ Generate Group Recommendations'}
+              {generating ? (
+                <>
+                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-5 h-5" />
+                  Generate Group Recommendations
+                </>
+              )}
             </button>
             {error && (
               <div className="mt-6 bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded-lg max-w-md mx-auto">
@@ -297,52 +335,59 @@ export default function SuggestionsPage() {
   }) : null;
 
   return (
-    <div className="min-h-screen bg-slate-900 py-8">
+    <div className="min-h-screen py-8">
       <div className="container mx-auto px-4 max-w-7xl">
-        <Link href={`/trips/${tripId}`} className="text-blue-400 hover:text-blue-300 mb-4 inline-block underline">
-          ← Back to Trip
+        <Link href={`/trips/${tripId}`} className="text-blue-400 hover:text-blue-300 mb-4 inline-flex items-center gap-2 transition-colors">
+          <ArrowLeft className="w-4 h-4" />
+          Back to Trip
         </Link>
 
         <h1 className="text-4xl font-bold text-slate-50 mb-8">Trip Suggestions</h1>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-8 border-b border-slate-700">
+        <div className="flex gap-2 mb-8 border-b border-white/10">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-6 py-3 font-semibold rounded-t-lg transition-colors ${
+              className={`px-6 py-3 font-semibold rounded-t-2xl transition-all relative ${
                 activeTab === tab.id
-                  ? 'bg-slate-700 text-slate-50 border-b-2 border-blue-500'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                  ? 'text-slate-50 bg-white/10 border-b-2 border-blue-500'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
               }`}
             >
-              {tab.label} <span className="text-sm text-slate-500">({tab.count})</span>
+              {tab.label} <span className="text-sm opacity-70">({tab.count})</span>
             </button>
           ))}
         </div>
 
         {error && (
-          <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded-lg mb-6">
+          <div className="glass-card border-red-500/50 bg-red-500/10 text-red-200 px-4 py-3 rounded-3xl mb-6">
             {error}
           </div>
         )}
 
-        {/* Flights Tab */}
+        {/* Flights Tab - Horizontal Snap Carousel */}
         {activeTab === 'flights' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {flights.map((flight) => {
-              const isCheapest = cheapestFlight?.id === flight.id;
-              const isFastest = fastestFlight?.id === flight.id;
-              const voteCount = getVoteCount('flight', flight.id);
-              const userVote = getUserVote('flight', flight.id);
-              const airlineDomain = getAirlineDomain(flight.airline);
+          <div className="overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-6 -mx-4 px-4">
+            <div className="flex gap-6 min-w-max">
+              {flights.map((flight) => {
+                const isCheapest = cheapestFlight?.id === flight.id;
+                const isFastest = fastestFlight?.id === flight.id;
+                const voteCount = getVoteCount('flight', flight.id);
+                const userVote = getUserVote('flight', flight.id);
+                const airlineDomain = getAirlineDomain(flight.airline);
+                const isApproved = isApprovedByAll('flight', flight.id);
+                const voteKey = `flight_${flight.id}`;
+                const hasPulse = votingPulse === voteKey;
 
-              return (
-                <div
-                  key={flight.id}
-                  className="card-surface rounded-2xl p-6 hover:bg-slate-700 transition-all shadow-lg hover:shadow-xl"
-                >
+                return (
+                  <div
+                    key={flight.id}
+                    className={`glass-card p-6 glass-card-hover snap-start min-w-[320px] max-w-[380px] ${
+                      isApproved ? 'golden-state' : ''
+                    } ${hasPulse ? 'voting-pulse' : ''}`}
+                  >
                   {/* Airline Logo & Price Badge */}
                   <div className="flex justify-between items-start mb-4">
                     <img
@@ -387,40 +432,41 @@ export default function SuggestionsPage() {
                     {voteCount}/{membersCount} members approve
                   </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleVote('flight', flight.id, true)}
-                      className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-colors ${
-                        userVote === true
-                          ? 'bg-green-600 text-white'
-                          : 'bg-slate-700 text-slate-200 hover:bg-green-600 hover:text-white'
-                      }`}
-                    >
-                      ✓ Approve
-                    </button>
-                    <button
-                      onClick={() => handleVote('flight', flight.id, false)}
-                      className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-colors ${
-                        userVote === false
-                          ? 'bg-red-600 text-white'
-                          : 'bg-slate-700 text-slate-200 hover:bg-red-600 hover:text-white'
-                      }`}
-                    >
-                      ✗ Reject
-                    </button>
-                    <a
-                      href={flight.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-                    >
-                      Book
-                    </a>
+                    {/* Action Buttons */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleVote('flight', flight.id, true)}
+                        className={`flex-1 px-4 py-2 rounded-xl font-semibold transition-all glass-card-hover ${
+                          userVote === true
+                            ? 'bg-green-500/30 text-green-300 border border-green-500/50'
+                            : 'bg-white/5 text-slate-200 hover:bg-green-500/20 hover:text-green-300 border border-white/10'
+                        }`}
+                      >
+                        ✓ Approve
+                      </button>
+                      <button
+                        onClick={() => handleVote('flight', flight.id, false)}
+                        className={`flex-1 px-4 py-2 rounded-xl font-semibold transition-all glass-card-hover ${
+                          userVote === false
+                            ? 'bg-red-500/30 text-red-300 border border-red-500/50'
+                            : 'bg-white/5 text-slate-200 hover:bg-red-500/20 hover:text-red-300 border border-white/10'
+                        }`}
+                      >
+                        ✗ Reject
+                      </button>
+                      <a
+                        href={flight.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all glass-card-hover"
+                      >
+                        Book
+                      </a>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -431,11 +477,16 @@ export default function SuggestionsPage() {
               const voteCount = getVoteCount('accommodation', accommodation.id);
               const userVote = getUserVote('accommodation', accommodation.id);
               const stars = Math.round(accommodation.rating);
+              const isApproved = isApprovedByAll('accommodation', accommodation.id);
+              const voteKey = `accommodation_${accommodation.id}`;
+              const hasPulse = votingPulse === voteKey;
 
               return (
                 <div
                   key={accommodation.id}
-                  className="card-surface rounded-2xl p-6 hover:bg-slate-700 transition-all shadow-lg hover:shadow-xl"
+                  className={`glass-card p-6 glass-card-hover ${
+                    isApproved ? 'golden-state' : ''
+                  } ${hasPulse ? 'voting-pulse' : ''}`}
                 >
                   {/* Name & Rating */}
                   <div className="mb-4">
@@ -475,20 +526,20 @@ export default function SuggestionsPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleVote('accommodation', accommodation.id, true)}
-                      className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-colors ${
+                      className={`flex-1 px-4 py-2 rounded-xl font-semibold transition-all glass-card-hover ${
                         userVote === true
-                          ? 'bg-green-600 text-white'
-                          : 'bg-slate-700 text-slate-200 hover:bg-green-600 hover:text-white'
+                          ? 'bg-green-500/30 text-green-300 border border-green-500/50'
+                          : 'bg-white/5 text-slate-200 hover:bg-green-500/20 hover:text-green-300 border border-white/10'
                       }`}
                     >
                       ✓ Approve
                     </button>
                     <button
                       onClick={() => handleVote('accommodation', accommodation.id, false)}
-                      className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-colors ${
+                      className={`flex-1 px-4 py-2 rounded-xl font-semibold transition-all glass-card-hover ${
                         userVote === false
-                          ? 'bg-red-600 text-white'
-                          : 'bg-slate-700 text-slate-200 hover:bg-red-600 hover:text-white'
+                          ? 'bg-red-500/30 text-red-300 border border-red-500/50'
+                          : 'bg-white/5 text-slate-200 hover:bg-red-500/20 hover:text-red-300 border border-white/10'
                       }`}
                     >
                       ✗ Reject
@@ -497,7 +548,7 @@ export default function SuggestionsPage() {
                       href={accommodation.link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                      className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all glass-card-hover"
                     >
                       Book
                     </a>
@@ -514,11 +565,16 @@ export default function SuggestionsPage() {
             {activities.map((activity) => {
               const voteCount = getVoteCount('activity', activity.id);
               const userVote = getUserVote('activity', activity.id);
+              const isApproved = isApprovedByAll('activity', activity.id);
+              const voteKey = `activity_${activity.id}`;
+              const hasPulse = votingPulse === voteKey;
 
               return (
                 <div
                   key={activity.id}
-                  className="card-surface rounded-2xl p-6 hover:bg-slate-700 transition-all shadow-lg hover:shadow-xl"
+                  className={`glass-card p-6 glass-card-hover ${
+                    isApproved ? 'golden-state' : ''
+                  } ${hasPulse ? 'voting-pulse' : ''}`}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
@@ -542,20 +598,20 @@ export default function SuggestionsPage() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleVote('activity', activity.id, true)}
-                        className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                        className={`px-4 py-2 rounded-xl font-semibold transition-all glass-card-hover ${
                           userVote === true
-                            ? 'bg-green-600 text-white'
-                            : 'bg-slate-700 text-slate-200 hover:bg-green-600 hover:text-white'
+                            ? 'bg-green-500/30 text-green-300 border border-green-500/50'
+                            : 'bg-white/5 text-slate-200 hover:bg-green-500/20 hover:text-green-300 border border-white/10'
                         }`}
                       >
                         ✓ Approve
                       </button>
                       <button
                         onClick={() => handleVote('activity', activity.id, false)}
-                        className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                        className={`px-4 py-2 rounded-xl font-semibold transition-all glass-card-hover ${
                           userVote === false
-                            ? 'bg-red-600 text-white'
-                            : 'bg-slate-700 text-slate-200 hover:bg-red-600 hover:text-white'
+                            ? 'bg-red-500/30 text-red-300 border border-red-500/50'
+                            : 'bg-white/5 text-slate-200 hover:bg-red-500/20 hover:text-red-300 border border-white/10'
                         }`}
                       >
                         ✗ Reject

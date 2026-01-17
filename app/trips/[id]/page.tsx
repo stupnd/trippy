@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { ArrowLeft, Plane, Hotel, Target, Calendar, Settings, Sparkles, Share2, Trash2, LogOut, Users, Circle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth, useTripMember } from '@/lib/auth';
 import { TripRow, TripMemberRow, UserPreferencesRow } from '@/lib/supabase';
@@ -35,7 +36,6 @@ export default function TripDetailPage() {
     }
 
     if (!authLoading && user && !memberLoading && isMember === false) {
-      // User is logged in but not a member - redirect to join
       router.push(`/trips/join?code=&redirect=${encodeURIComponent(`/trips/${tripId}`)}`);
       return;
     }
@@ -47,28 +47,23 @@ export default function TripDetailPage() {
 
   const fetchDashboardData = async () => {
     try {
-      // Fetch trip from Supabase - use maybeSingle to avoid 406 when trip doesn't exist
       const { data: tripData, error: tripError } = await supabase
         .from('trips')
         .select('*')
         .eq('id', tripId)
         .maybeSingle();
 
-      // If trip not found, redirect to join page
       if (tripError && tripError.code !== 'PGRST116') {
-        // Unexpected error
         throw tripError;
       }
 
       if (!tripData) {
-        // Trip not found - redirect to join page
         router.push(`/trips/join?redirect=${encodeURIComponent(`/trips/${tripId}`)}`);
         return;
       }
 
       setTrip(tripData);
 
-      // Fetch trip members
       const { data: membersData, error: membersError } = await supabase
         .from('trip_members')
         .select('*')
@@ -77,7 +72,6 @@ export default function TripDetailPage() {
 
       if (membersError) throw membersError;
 
-      // Fetch all user preferences for this trip
       const { data: preferencesData, error: preferencesError } = await supabase
         .from('user_preferences')
         .select('member_id')
@@ -85,12 +79,10 @@ export default function TripDetailPage() {
 
       if (preferencesError) throw preferencesError;
 
-      // Create a set of member IDs who have preferences
       const membersWithPreferences = new Set(
         (preferencesData || []).map((p) => p.member_id)
       );
 
-      // Map members with status
       const membersWithStatus: MemberWithStatus[] = (membersData || []).map(
         (member) => ({
           ...member,
@@ -100,12 +92,8 @@ export default function TripDetailPage() {
 
       setMembers(membersWithStatus);
 
-      // After fetching, check if user is actually a member
-      // If not found in members list, redirect to join
       if (user && membersWithStatus.length > 0) {
-        // Check using user_id column (not id, which is the primary key)
         const userIsMember = membersWithStatus.some(m => {
-          // Check both id and user_id for backwards compatibility
           return (m as any).user_id === user.id || m.id === user.id;
         });
         if (!userIsMember) {
@@ -116,7 +104,6 @@ export default function TripDetailPage() {
     } catch (error: any) {
       console.error('Error fetching dashboard data:', error);
       setError(error.message || 'Failed to load trip');
-      // If error fetching trip and user is authenticated, redirect to join
       if (user && error.code === 'PGRST116') {
         router.push(`/trips/join?redirect=${encodeURIComponent(`/trips/${tripId}`)}`);
         return;
@@ -133,8 +120,6 @@ export default function TripDetailPage() {
       return 'Awaiting Preferences';
     }
     
-    // For MVP, assume all modules need preferences first
-    // Later this can check if flights/accommodations/activities have been generated
     return 'Ready to Generate';
   };
 
@@ -144,10 +129,8 @@ export default function TripDetailPage() {
 
     setGenerating(true);
     
-    // Simulate AI "thinking" - just show loading state
     setTimeout(() => {
       setGenerating(false);
-      // TODO: Actual AI integration will go here
     }, 2000);
   };
 
@@ -228,33 +211,19 @@ export default function TripDetailPage() {
 
   if (authLoading || memberLoading || loading) {
     return (
-      <div className="min-h-screen bg-slate-900 py-8">
+      <div className="min-h-screen py-8">
         <div className="container mx-auto px-4 max-w-7xl">
-          {/* Loading Skeleton */}
           <div className="mb-6">
-            <div className="h-12 bg-slate-800 rounded-lg w-64 mb-4 animate-pulse"></div>
-            <div className="h-6 bg-slate-800 rounded-lg w-48 animate-pulse"></div>
+            <div className="h-12 bg-white/5 rounded-3xl w-64 mb-4 shimmer-loader"></div>
+            <div className="h-6 bg-white/5 rounded-3xl w-48 shimmer-loader"></div>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
             {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
-                className="card-surface rounded-lg p-6 h-32 animate-pulse"
+                className="glass-card p-6 h-32 shimmer-loader"
               ></div>
             ))}
-          </div>
-
-          <div className="card-surface rounded-lg p-6 mb-6">
-            <div className="h-6 bg-slate-700 rounded w-48 mb-4 animate-pulse"></div>
-            <div className="flex gap-3">
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="h-10 bg-slate-700 rounded-full w-24 animate-pulse"
-                ></div>
-              ))}
-            </div>
           </div>
         </div>
       </div>
@@ -263,7 +232,7 @@ export default function TripDetailPage() {
 
   if (!trip) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-slate-50 mb-4">
             {error || 'Trip not found'}
@@ -282,46 +251,50 @@ export default function TripDetailPage() {
       : '';
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen">
       {/* Header */}
-      <div className="card-surface shadow border-b border-slate-700">
+      <div className="glass-card border-b border-white/10 mb-8">
         <div className="container mx-auto px-4 py-6">
           <div className="flex justify-between items-center">
             <div className="flex-1">
               <Link
                 href="/"
-                className="text-blue-400 hover:text-blue-300 mb-2 inline-block text-sm underline"
+                className="text-blue-400 hover:text-blue-300 mb-2 inline-flex items-center gap-2 text-sm transition-colors"
               >
-                ← Back to My Trips
+                <ArrowLeft className="w-4 h-4" />
+                Back to My Trips
               </Link>
-              <h1 className="text-3xl font-bold text-slate-50">{trip.name}</h1>
-              <p className="text-slate-300 mt-1">
+              <h1 className="text-4xl font-bold text-slate-50 mb-1">{trip.name}</h1>
+              <p className="text-slate-300">
                 {trip.destination_city}, {trip.destination_country}
               </p>
             </div>
             <div className="flex gap-3 items-center">
               <Link
                 href={`/trips/${tripId}/share`}
-                className="bg-slate-700 text-slate-200 px-4 py-2 rounded-lg hover:bg-slate-600 transition-colors"
+                className="glass-card px-4 py-2 rounded-xl font-semibold text-slate-200 hover:bg-white/10 transition-all glass-card-hover flex items-center gap-2"
               >
-                Share Overview
+                <Share2 className="w-4 h-4 opacity-70" />
+                Share
               </Link>
               {isCreator && (
                 <button
                   onClick={handleDeleteTrip}
                   disabled={deleting}
-                  className="bg-red-700 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="glass-card px-4 py-2 rounded-xl font-semibold text-red-300 hover:bg-red-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  {deleting ? 'Deleting...' : 'Delete Trip'}
+                  <Trash2 className="w-4 h-4" />
+                  {deleting ? 'Deleting...' : 'Delete'}
                 </button>
               )}
               {!isCreator && (
                 <button
                   onClick={handleLeaveTrip}
                   disabled={leaving}
-                  className="bg-slate-700 text-slate-200 px-4 py-2 rounded-lg hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="glass-card px-4 py-2 rounded-xl font-semibold text-slate-200 hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  {leaving ? 'Leaving...' : 'Leave Trip'}
+                  <LogOut className="w-4 h-4" />
+                  {leaving ? 'Leaving...' : 'Leave'}
                 </button>
               )}
             </div>
@@ -331,20 +304,21 @@ export default function TripDetailPage() {
 
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         {error && (
-          <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded-lg mb-6">
+          <div className="glass-card border-red-500/50 bg-red-500/10 text-red-200 px-4 py-3 rounded-3xl mb-6">
             {error}
           </div>
         )}
+
         {/* Generate Button */}
         {canGenerate && (
-          <div className="mb-6 flex justify-center">
+          <div className="mb-8 flex justify-center">
             <button
               onClick={handleGenerate}
               disabled={generating}
-              className={`px-8 py-4 rounded-lg font-semibold text-lg transition-colors ${
+              className={`px-8 py-4 rounded-3xl font-semibold text-lg transition-all glass-card-hover ${
                 generating
-                  ? 'bg-blue-400 text-white cursor-not-allowed'
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
+                  ? 'bg-blue-500/30 text-white cursor-not-allowed'
+                  : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 shadow-lg'
               }`}
             >
               {generating ? (
@@ -372,131 +346,141 @@ export default function TripDetailPage() {
                   Generating Trip Options...
                 </span>
               ) : (
-                '✨ Generate Trip Options'
+                <span className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5" />
+                  Generate Trip Options
+                </span>
               )}
             </button>
           </div>
         )}
 
-        {/* Member Status */}
-        <div className="card-surface rounded-lg p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4 text-slate-50">
-            Trip Members ({members.length})
-          </h2>
-          <div className="flex flex-wrap gap-3">
-            {members.map((member) => (
-              <div
-                key={member.id}
-                className="px-4 py-2 bg-slate-700 text-slate-200 rounded-full flex items-center gap-2 border border-slate-600"
-              >
-                <span>{member.name}</span>
-                {member.hasPreferences ? (
-                  <span className="text-xs bg-green-900 text-green-100 px-2 py-0.5 rounded border border-green-700">
-                    ✅ Ready
-                  </span>
-                ) : (
-                  <span className="text-xs bg-yellow-900 text-yellow-100 px-2 py-0.5 rounded border border-yellow-700">
-                    ⏳ Thinking
-                  </span>
-                )}
+        {/* Bento Grid Layout */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+          {/* Member Status - Large Card */}
+          <div className="md:col-span-2 glass-card p-6 glass-card-hover">
+            <div className="flex items-center gap-3 mb-4">
+              <Users className="w-6 h-6 text-blue-400 opacity-80" />
+              <h2 className="text-xl font-semibold text-slate-50">
+                Trip Members ({members.length})
+              </h2>
+              <div className="flex items-center gap-2 ml-auto">
+                <Circle className="w-2 h-2 fill-red-500 text-red-500 live-pulse" />
+                <span className="text-xs text-slate-400">Live</span>
               </div>
-            ))}
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {members.map((member) => (
+                <div
+                  key={member.id}
+                  className="glass-card px-4 py-2 rounded-full flex items-center gap-2 border-white/10"
+                >
+                  <span className="text-slate-200 font-medium">{member.name}</span>
+                  {member.hasPreferences ? (
+                    <span className="text-xs bg-green-500/20 text-green-300 px-2 py-0.5 rounded-full border border-green-500/30">
+                      ✓ Ready
+                    </span>
+                  ) : (
+                    <span className="text-xs bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded-full border border-yellow-500/30">
+                      ⏳ Thinking
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
+
+          {/* Preferences Card */}
+          <Link
+            href={`/trips/${tripId}/preferences`}
+            className="glass-card p-6 glass-card-hover"
+          >
+            <Settings className="w-8 h-8 text-purple-400 opacity-80 mb-3" />
+            <h3 className="text-lg font-semibold mb-2 text-slate-50">
+              Set Preferences
+            </h3>
+            <p className="text-slate-300 text-sm">
+              Tell us what you want
+            </p>
+          </Link>
+
+          {/* AI Suggestions Card */}
+          <Link
+            href={`/trips/${tripId}/suggestions`}
+            className="glass-card p-6 glass-card-hover bg-gradient-to-br from-purple-500/10 to-blue-500/10 border-purple-500/20"
+          >
+            <Sparkles className="w-8 h-8 text-purple-400 opacity-80 mb-3" />
+            <h3 className="text-lg font-semibold mb-2 text-slate-50">
+              AI Suggestions
+            </h3>
+            <p className="text-slate-300 text-sm">
+              View recommendations
+            </p>
+          </Link>
         </div>
 
-        {/* Progress Overview - Module Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-          {/* Flights Card */}
+        {/* Module Cards - Bento Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
           <ModuleCard
-            title="✈️ Flights"
+            title="Flights"
+            icon={Plane}
             status={getModuleStatus('flights')}
             href={`/trips/${tripId}/suggestions?tab=flights`}
           />
-
-          {/* Accommodations Card */}
           <ModuleCard
-            title="🏨 Accommodations"
+            title="Accommodations"
+            icon={Hotel}
             status={getModuleStatus('accommodations')}
             href={`/trips/${tripId}/suggestions?tab=stays`}
           />
-
-          {/* Activities Card */}
           <ModuleCard
-            title="🎯 Activities"
+            title="Activities"
+            icon={Target}
             status={getModuleStatus('activities')}
             href={`/trips/${tripId}/suggestions?tab=activities`}
           />
-
-          {/* Itinerary Card */}
           <ModuleCard
-            title="📅 Itinerary"
+            title="Itinerary"
+            icon={Calendar}
             status={getModuleStatus('itinerary')}
             href={`/trips/${tripId}/suggestions?tab=itinerary`}
           />
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <Link
-            href={`/trips/${tripId}/preferences`}
-            className="card-surface rounded-lg p-6 hover:bg-slate-700 transition-colors"
-          >
-            <h3 className="text-xl font-semibold mb-2 text-slate-50">
-              ⚙️ Set Preferences
-            </h3>
-            <p className="text-slate-300 text-sm">
-              Tell us what you want for this trip
-            </p>
-          </Link>
-
-          <Link
-            href={`/trips/${tripId}/suggestions`}
-            className="card-surface rounded-lg p-6 hover:bg-slate-700 transition-colors"
-          >
-            <h3 className="text-xl font-semibold mb-2 text-slate-50">
-              ✨ AI Suggestions
-            </h3>
-            <p className="text-slate-300 text-sm">
-              View AI-generated recommendations for flights, stays, and activities
-            </p>
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-          <div className="card-surface rounded-lg p-6">
-            <h3 className="text-xl font-semibold mb-4 text-slate-50">
-              🔗 Invite Friends
-            </h3>
-            <div className="space-y-3">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  readOnly
-                  value={trip.invite_code}
-                  className="flex-1 px-3 py-2 border border-slate-600 rounded-lg bg-slate-700 font-mono text-sm font-bold text-center text-slate-50"
-                />
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(trip.invite_code);
-                  }}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-                >
-                  Copy
-                </button>
-              </div>
-              <p className="text-xs text-slate-400">
-                Share this code or{' '}
-                <a
-                  href={inviteLink}
-                  className="text-blue-400 hover:underline"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  use the invite link
-                </a>
-              </p>
+        {/* Invite Card */}
+        <div className="glass-card p-6">
+          <h3 className="text-xl font-semibold mb-4 text-slate-50 flex items-center gap-2">
+            <Share2 className="w-5 h-5 text-blue-400 opacity-80" />
+            Invite Friends
+          </h3>
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                readOnly
+                value={trip.invite_code}
+                className="flex-1 px-4 py-3 border border-white/20 rounded-2xl bg-white/5 font-mono text-sm font-bold text-center text-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              />
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(trip.invite_code);
+                }}
+                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-2xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all glass-card-hover"
+              >
+                Copy
+              </button>
             </div>
+            <p className="text-xs text-slate-400">
+              Share this code or{' '}
+              <a
+                href={inviteLink}
+                className="text-blue-400 hover:underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                use the invite link
+              </a>
+            </p>
           </div>
         </div>
       </div>
@@ -507,10 +491,12 @@ export default function TripDetailPage() {
 // Module Card Component
 function ModuleCard({
   title,
+  icon: Icon,
   status,
   href,
 }: {
   title: string;
+  icon: React.ComponentType<{ className?: string }>;
   status: ModuleStatus;
   href: string;
 }) {
@@ -532,7 +518,7 @@ function ModuleCard({
       case 'Awaiting Preferences':
         return '⏳';
       case 'Ready to Generate':
-        return '✅';
+        return '✓';
       case 'Locked':
         return '🔒';
       default:
@@ -543,11 +529,12 @@ function ModuleCard({
   return (
     <Link
       href={href}
-      className="card-surface rounded-lg p-6 hover:bg-slate-700 transition-colors"
+      className="glass-card p-6 glass-card-hover flex flex-col"
     >
-      <h3 className="text-xl font-semibold mb-3 text-slate-50">{title}</h3>
-      <div className="flex items-center gap-2">
-        <span className="text-lg">{getStatusIcon()}</span>
+      <Icon className="w-8 h-8 text-blue-400 opacity-80 mb-3" />
+      <h3 className="text-lg font-semibold mb-3 text-slate-50">{title}</h3>
+      <div className="flex items-center gap-2 mt-auto">
+        <span className={`text-lg ${getStatusColor()}`}>{getStatusIcon()}</span>
         <span className={`text-sm font-medium ${getStatusColor()}`}>
           {status}
         </span>
