@@ -21,6 +21,8 @@ export interface TripRow {
   invite_code: string;
   created_at: string;
   created_by: string;
+  summary?: string | null;
+  summary_updated_at?: string | null;
 }
 
 export interface TripMemberRow {
