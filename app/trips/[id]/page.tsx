@@ -431,7 +431,7 @@ export default function TripDetailPage() {
           <ModuleCard
             title="📅 Itinerary"
             status={getModuleStatus('itinerary')}
-            href={`/trips/${tripId}/suggestions?tab=activities`}
+            href={`/trips/${tripId}/suggestions?tab=itinerary`}
           />
         </div>
 
