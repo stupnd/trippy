@@ -48,23 +48,70 @@ export interface FlightPreference {
   };
 }
 
-export interface FlightOption {
-  id: string;
-  price: number; // in USD
-  airline: string[];
+export interface FlightSearchInput {
+  origin: string;
+  destination: string;
+  departureDateRange: {
+    start: string;
+    end: string;
+  };
+  returnDateRange: {
+    start: string;
+    end: string;
+  };
+  budget?: number;
+  travelers: number;
+}
+
+export interface FlightSegment {
+  airline: string;
+  flightNumber?: string;
   departure: {
     time: string;
     airport: string;
+    city?: string;
   };
   arrival: {
     time: string;
     airport: string;
+    city?: string;
   };
   duration: number; // minutes
   layovers: {
     count: number;
     airports: string[];
+    durations?: number[]; // minutes per layover
   };
+  stops: number;
+}
+
+export interface FlightOption {
+  id: string;
+  price: number; // per traveler in USD
+  roundTripPrice?: number; // total for all travelers in USD
+  currency?: string;
+  airline: string[];
+  departure: {
+    time: string;
+    airport: string;
+    city?: string;
+  };
+  arrival: {
+    time: string;
+    airport: string;
+    city?: string;
+  };
+  duration: number; // minutes
+  layovers: {
+    count: number;
+    airports: string[];
+    durations?: number[]; // minutes per layover
+  };
+  stops?: number;
+  returnSegment?: FlightSegment;
+  totalDuration?: number; // minutes
+  outboundDate?: string;
+  returnDate?: string;
   score: number; // 0-100
   isCheapest?: boolean;
   isFastest?: boolean;
@@ -72,6 +119,7 @@ export interface FlightOption {
 }
 
 export interface FlightSelection {
+  search?: FlightSearchInput;
   preferences: FlightPreference[];
   options: FlightOption[];
   selectedOptionId?: string;
