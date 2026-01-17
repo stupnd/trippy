@@ -11,7 +11,7 @@ export default function PreferencesPage() {
   const params = useParams();
   const router = useRouter();
   const tripId = params.id as string;
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { isMember, loading: memberLoading } = useTripMember(tripId);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -189,6 +189,7 @@ export default function PreferencesPage() {
 
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
+      updateTripSummary();
     } catch (error: any) {
       console.error('Error saving preferences:', error);
       setError(error.message || 'Failed to save preferences');
@@ -204,6 +205,79 @@ export default function PreferencesPage() {
         ? prev.activity_interests.filter((a) => a !== activity)
         : [...prev.activity_interests, activity],
     }));
+  };
+
+  const updateTripSummary = async () => {
+    try {
+      const { data: membersData, error: membersError } = await supabase
+        .from('trip_members')
+        .select('id')
+        .eq('trip_id', tripId);
+      if (membersError) throw membersError;
+
+      const membersCount = membersData?.length || 0;
+      const suggestionsRaw =
+        typeof window !== 'undefined' ? localStorage.getItem(`suggestions_${tripId}`) : null;
+      const votesRaw =
+        typeof window !== 'undefined' ? localStorage.getItem(`votes_${tripId}`) : null;
+
+      let suggestions;
+      if (suggestionsRaw) {
+        try {
+          suggestions = JSON.parse(suggestionsRaw);
+        } catch {
+          suggestions = null;
+        }
+      }
+
+      let votes: Record<string, Record<string, boolean>> = {};
+      if (votesRaw) {
+        try {
+          votes = JSON.parse(votesRaw);
+        } catch {
+          votes = {};
+        }
+      }
+
+      const voteCountFor = (key: string) => {
+        const optionVotes = votes[key] || {};
+        return Object.values(optionVotes).filter(Boolean).length;
+      };
+
+      const flights = suggestions?.suggestions?.flights || [];
+      const accommodations = suggestions?.suggestions?.accommodations || [];
+      const activities = suggestions?.suggestions?.activities || [];
+
+      const approvedFlights = flights.filter(
+        (item: any) => voteCountFor(`flight_${item.id}`) === membersCount
+      );
+      const approvedStays = accommodations.filter(
+        (item: any) => voteCountFor(`accommodation_${item.id}`) === membersCount
+      );
+      const approvedActivities = activities.filter(
+        (item: any) => voteCountFor(`activity_${item.id}`) === membersCount
+      );
+
+      await fetch('/api/generate-trip-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          trip_id: tripId,
+          approved: {
+            flights: approvedFlights,
+            accommodations: approvedStays,
+            activities: approvedActivities,
+          },
+          available_counts: {
+            flights: flights.length,
+            accommodations: accommodations.length,
+            activities: activities.length,
+          },
+        }),
+      });
+    } catch (summaryError) {
+      console.error('Error updating trip summary:', summaryError);
+    }
   };
 
   if (authLoading || memberLoading || loading) {
