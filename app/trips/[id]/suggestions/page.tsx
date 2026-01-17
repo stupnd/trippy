@@ -50,7 +50,7 @@ interface SuggestionsResponse {
   };
 }
 
-type TabType = 'flights' | 'stays' | 'activities';
+type TabType = 'flights' | 'stays' | 'activities' | 'itinerary';
 
 export default function SuggestionsPage() {
   const params = useParams();
@@ -81,7 +81,7 @@ export default function SuggestionsPage() {
 
   useEffect(() => {
     const tabParam = searchParams.get('tab') as TabType | null;
-    if (tabParam && ['flights', 'stays', 'activities'].includes(tabParam)) {
+    if (tabParam && ['flights', 'stays', 'activities', 'itinerary'].includes(tabParam)) {
       setActiveTab(tabParam);
     }
   }, [searchParams]);
@@ -195,6 +195,11 @@ export default function SuggestionsPage() {
     return Object.values(optionVotes).filter(Boolean).length;
   };
 
+  const isApprovedByAll = (optionType: 'flight' | 'accommodation' | 'activity', optionId: string): boolean => {
+    if (membersCount === 0) return false;
+    return getVoteCount(optionType, optionId) === membersCount;
+  };
+
   const getUserVote = (optionType: 'flight' | 'accommodation' | 'activity', optionId: string): boolean | null => {
     if (!user) return null;
     const voteKey = `${optionType}_${optionId}`;
@@ -265,15 +270,23 @@ export default function SuggestionsPage() {
     );
   }
 
-  const tabs = [
-    { id: 'flights' as TabType, label: '✈️ Flights', count: suggestions?.suggestions.flights.length || 0 },
-    { id: 'stays' as TabType, label: '🏨 Stays', count: suggestions?.suggestions.accommodations.length || 0 },
-    { id: 'activities' as TabType, label: '🎡 Activities', count: suggestions?.suggestions.activities.length || 0 },
-  ];
-
   const flights = suggestions?.suggestions.flights || [];
   const accommodations = suggestions?.suggestions.accommodations || [];
   const activities = suggestions?.suggestions.activities || [];
+
+  const tabs = [
+    { id: 'flights' as TabType, label: '✈️ Flights', count: flights.length },
+    { id: 'stays' as TabType, label: '🏨 Stays', count: accommodations.length },
+    { id: 'activities' as TabType, label: '🎡 Activities', count: activities.length },
+    {
+      id: 'itinerary' as TabType,
+      label: '📅 Itinerary',
+      count:
+        flights.filter((f) => isApprovedByAll('flight', f.id)).length +
+        accommodations.filter((a) => isApprovedByAll('accommodation', a.id)).length +
+        activities.filter((a) => isApprovedByAll('activity', a.id)).length,
+    },
+  ];
 
   // Find cheapest and fastest flight for "Best Value" tag
   const cheapestFlight = flights.length > 0 ? flights.reduce((prev, curr) => (prev.price < curr.price ? prev : curr)) : null;
@@ -552,6 +565,103 @@ export default function SuggestionsPage() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Itinerary Tab */}
+        {activeTab === 'itinerary' && (
+          <div className="space-y-6">
+            {membersCount === 0 && (
+              <div className="card-surface rounded-2xl p-6 text-slate-300">
+                Trip members are still loading. Try again in a moment.
+              </div>
+            )}
+
+            {membersCount > 0 && (
+              <>
+                <div className="card-surface rounded-2xl p-6">
+                  <h2 className="text-xl font-semibold text-slate-50 mb-4">✅ Approved Flights</h2>
+                  {flights.filter((f) => isApprovedByAll('flight', f.id)).length === 0 ? (
+                    <p className="text-slate-400">No flights approved by everyone yet.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {flights
+                        .filter((f) => isApprovedByAll('flight', f.id))
+                        .map((flight) => (
+                          <div
+                            key={flight.id}
+                            className="p-4 rounded-xl bg-slate-800 border border-slate-700"
+                          >
+                            <div className="flex justify-between items-center mb-2">
+                              <div className="text-slate-50 font-semibold">{flight.airline}</div>
+                              <div className="text-slate-200 font-semibold">${flight.price}</div>
+                            </div>
+                            <div className="text-sm text-slate-300">
+                              {flight.departure.airport} → {flight.arrival.airport} • {flight.duration}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="card-surface rounded-2xl p-6">
+                  <h2 className="text-xl font-semibold text-slate-50 mb-4">✅ Approved Stays</h2>
+                  {accommodations.filter((a) => isApprovedByAll('accommodation', a.id)).length === 0 ? (
+                    <p className="text-slate-400">No stays approved by everyone yet.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {accommodations
+                        .filter((a) => isApprovedByAll('accommodation', a.id))
+                        .map((accommodation) => (
+                          <div
+                            key={accommodation.id}
+                            className="p-4 rounded-xl bg-slate-800 border border-slate-700"
+                          >
+                            <div className="flex justify-between items-center mb-2">
+                              <div className="text-slate-50 font-semibold">{accommodation.name}</div>
+                              <div className="text-slate-200 font-semibold">
+                                ${accommodation.pricePerNight}/night
+                              </div>
+                            </div>
+                            <div className="text-sm text-slate-300">
+                              {accommodation.type} • {accommodation.location}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="card-surface rounded-2xl p-6">
+                  <h2 className="text-xl font-semibold text-slate-50 mb-4">✅ Approved Activities</h2>
+                  {activities.filter((a) => isApprovedByAll('activity', a.id)).length === 0 ? (
+                    <p className="text-slate-400">No activities approved by everyone yet.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {activities
+                        .filter((a) => isApprovedByAll('activity', a.id))
+                        .map((activity) => (
+                          <div
+                            key={activity.id}
+                            className="p-4 rounded-xl bg-slate-800 border border-slate-700"
+                          >
+                            <div className="flex justify-between items-center mb-2">
+                              <div className="text-slate-50 font-semibold">{activity.name}</div>
+                              <div className="text-slate-200 font-semibold">
+                                {activity.price === 0 ? 'Free' : `$${activity.price}`}
+                              </div>
+                            </div>
+                            <div className="text-sm text-slate-300">
+                              {activity.type} • {activity.location}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
