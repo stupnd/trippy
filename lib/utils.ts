@@ -10,9 +10,12 @@ export function scoreFlights(options: FlightOption[]): FlightOption[] {
   if (options.length === 0) return options;
 
   // Normalize values
-  const prices = options.map(opt => opt.price);
-  const durations = options.map(opt => opt.duration);
-  const layoverCounts = options.map(opt => opt.layovers.count);
+  const prices = options.map(opt => opt.roundTripPrice ?? opt.price);
+  const durations = options.map(opt => opt.totalDuration ?? opt.duration);
+  const layoverCounts = options.map(opt => opt.returnSegment
+    ? opt.layovers.count + opt.returnSegment.layovers.count
+    : opt.layovers.count
+  );
 
   const minPrice = Math.min(...prices);
   const maxPrice = Math.max(...prices);
@@ -28,9 +31,15 @@ export function scoreFlights(options: FlightOption[]): FlightOption[] {
   // Score each option
   const scored = options.map(opt => {
     // Lower is better for price, duration, layovers
-    const priceScore = 1 - (opt.price - minPrice) / priceRange; // 0-1
-    const durationScore = 1 - (opt.duration - minDuration) / durationRange;
-    const layoverScore = 1 - (opt.layovers.count - minLayovers) / layoverRange;
+    const priceValue = opt.roundTripPrice ?? opt.price;
+    const durationValue = opt.totalDuration ?? opt.duration;
+    const layoverValue = opt.returnSegment
+      ? opt.layovers.count + opt.returnSegment.layovers.count
+      : opt.layovers.count;
+
+    const priceScore = 1 - (priceValue - minPrice) / priceRange; // 0-1
+    const durationScore = 1 - (durationValue - minDuration) / durationRange;
+    const layoverScore = 1 - (layoverValue - minLayovers) / layoverRange;
 
     // Weighted score
     const totalScore = (
@@ -44,10 +53,10 @@ export function scoreFlights(options: FlightOption[]): FlightOption[] {
 
   // Find best options
   const cheapest = scored.reduce((prev, curr) => 
-    curr.price < prev.price ? curr : prev
+    (curr.roundTripPrice ?? curr.price) < (prev.roundTripPrice ?? prev.price) ? curr : prev
   );
   const fastest = scored.reduce((prev, curr) => 
-    curr.duration < prev.duration ? curr : prev
+    (curr.totalDuration ?? curr.duration) < (prev.totalDuration ?? prev.duration) ? curr : prev
   );
   const bestValue = scored.reduce((prev, curr) => 
     curr.score > prev.score ? curr : prev

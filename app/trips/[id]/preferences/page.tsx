@@ -17,7 +17,6 @@ export default function PreferencesPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
-  const [members, setMembers] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedMemberId, setSelectedMemberId] = useState<string>('');
   const [formData, setFormData] = useState({
     preferred_origin: '',
@@ -28,6 +27,15 @@ export default function PreferencesPage() {
     accommodation_type: '',
     activity_interests: [] as string[],
   });
+
+  const safeParseJson = (value: string) => {
+    if (!value) return null;
+    try {
+      return JSON.parse(value);
+    } catch {
+      return null;
+    }
+  };
 
   const activityOptions = [
     'Outdoor Adventures',
@@ -53,61 +61,44 @@ export default function PreferencesPage() {
     'Any',
   ];
 
-  const fetchMembers = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('trip_members')
-        .select('id, name')
-        .eq('trip_id', tripId)
-        .order('joined_at', { ascending: true });
-
-      if (error) throw error;
-
-      setMembers(data || []);
-      if (data && data.length > 0 && !selectedMemberId && user) {
-        // Auto-select current user's member ID if they're a member
-        const userMember = data.find((m) => m.id === user.id);
-        if (userMember) {
-          setSelectedMemberId(userMember.id);
-        } else {
-          // Fallback to first member or localStorage
-          const storedMemberId = localStorage.getItem(`trip_${tripId}_member_id`);
-          setSelectedMemberId(storedMemberId || data[0].id);
-        }
-      }
-    } catch (error: any) {
-      console.error('Error fetching members:', error);
-      setError('Failed to load trip members');
-    } finally {
-      setLoading(false);
-    }
+  const setMemberFromUser = () => {
+    if (!user) return;
+    setSelectedMemberId(user.id);
   };
 
   const fetchPreferences = async () => {
     if (!selectedMemberId) return;
 
     try {
-      const { data, error } = await supabase
-        .from('user_preferences')
-        .select('*')
-        .eq('trip_id', tripId)
-        .eq('member_id', selectedMemberId)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        // PGRST116 is "not found" which is okay
-        throw error;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) {
+        setError('Please sign in again to load preferences.');
+        return;
       }
 
-      if (data) {
+      const response = await fetch(
+        `/api/preferences?tripId=${encodeURIComponent(tripId)}&memberId=${encodeURIComponent(selectedMemberId)}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      const payloadText = await response.text();
+      const payload = safeParseJson(payloadText);
+
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to fetch preferences');
+      }
+
+      if (payload?.data) {
         setFormData({
-          preferred_origin: data.preferred_origin || '',
-          flight_flexibility: data.flight_flexibility || 'medium',
-          budget_sensitivity: data.budget_sensitivity || 'medium',
-          accommodation_budget_min: data.accommodation_budget_min?.toString() || '',
-          accommodation_budget_max: data.accommodation_budget_max?.toString() || '',
-          accommodation_type: data.accommodation_type || '',
-          activity_interests: data.activity_interests || [],
+          preferred_origin: payload.data.preferred_origin || '',
+          flight_flexibility: payload.data.flight_flexibility || 'medium',
+          budget_sensitivity: payload.data.budget_sensitivity || 'medium',
+          accommodation_budget_min: payload.data.accommodation_budget_min?.toString() || '',
+          accommodation_budget_max: payload.data.accommodation_budget_max?.toString() || '',
+          accommodation_type: payload.data.accommodation_type || '',
+          activity_interests: payload.data.activity_interests || [],
         });
       }
     } catch (error: any) {
@@ -129,7 +120,8 @@ export default function PreferencesPage() {
     }
 
     if (!authLoading && user && isMember) {
-      fetchMembers();
+      setMemberFromUser();
+      setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, user, memberLoading, isMember, tripId, router]);
@@ -143,8 +135,8 @@ export default function PreferencesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedMemberId) {
-      setError('Please select a member');
+    if (!selectedMemberId || !user || selectedMemberId !== user.id) {
+      setError('You can only edit your own preferences.');
       return;
     }
 
@@ -153,13 +145,12 @@ export default function PreferencesPage() {
     setSaved(false);
 
     try {
-      // Check if preferences exist
-      const { data: existing } = await supabase
-        .from('user_preferences')
-        .select('id')
-        .eq('trip_id', tripId)
-        .eq('member_id', selectedMemberId)
-        .single();
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) {
+        setError('Please sign in again to save preferences.');
+        return;
+      }
 
       const preferencesData = {
         trip_id: tripId,
@@ -178,29 +169,23 @@ export default function PreferencesPage() {
         updated_at: new Date().toISOString(),
       };
 
-      let error;
-      if (existing) {
-        // Update existing
-        const { error: updateError } = await supabase
-          .from('user_preferences')
-          .update(preferencesData)
-          .eq('id', existing.id);
-        error = updateError;
-      } else {
-        // Insert new
-        const { error: insertError } = await supabase
-          .from('user_preferences')
-          .insert({
-            id: uuidv4(),
-            ...preferencesData,
-          });
-        error = insertError;
+      const response = await fetch('/api/preferences', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          id: uuidv4(),
+          ...preferencesData,
+        }),
+      });
+      const payloadText = await response.text();
+      const payload = safeParseJson(payloadText);
+
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to save preferences');
       }
-
-      if (error) throw error;
-
-      // Store member_id in localStorage for future auto-select
-      localStorage.setItem(`trip_${tripId}_member_id`, selectedMemberId);
 
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -248,6 +233,9 @@ export default function PreferencesPage() {
             </button>
           </div>
           <h1 className="text-3xl font-bold text-slate-50">User Preferences</h1>
+          <p className="text-sm text-slate-400 mt-2">
+            You can only edit your own preferences for this trip.
+          </p>
         </div>
 
         {selectedMemberId && (
