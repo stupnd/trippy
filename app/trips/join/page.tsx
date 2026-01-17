@@ -55,31 +55,45 @@ export default function JoinTripPage() {
         return;
       }
 
-      // Check if user is already a member
-      const { data: existingMember } = await supabase
+      // Check if user is already a member (using maybeSingle to avoid error when not found)
+      const { data: existingMember, error: checkError } = await supabase
         .from('trip_members')
         .select('id')
         .eq('trip_id', trip.id)
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
+      // If there's an unexpected error during check, throw it
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+
+      // If user is already a member, redirect without inserting
       if (existingMember) {
-        // Already a member, just redirect
         const redirect = searchParams.get('redirect') || `/trips/${trip.id}`;
         router.push(redirect);
+        setLoading(false);
         return;
       }
 
-      // Insert user as trip member using auth.uid()
+      // Insert user as trip member using auth.uid() as the id
       const { error: memberError } = await supabase
         .from('trip_members')
         .insert({
-          id: user.id, // Use auth.uid() as the member id
+          id: user.id, // Use auth.uid() as the primary key (member id)
           trip_id: trip.id,
           name: userName,
         });
 
       if (memberError) {
+        // Handle case where insert fails due to duplicate (race condition)
+        if (memberError.code === '23505') {
+          // Duplicate key - user was added between check and insert, just redirect
+          const redirect = searchParams.get('redirect') || `/trips/${trip.id}`;
+          router.push(redirect);
+          setLoading(false);
+          return;
+        }
         throw memberError;
       }
 
