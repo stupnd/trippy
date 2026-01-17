@@ -15,7 +15,7 @@ interface UserTrip extends TripRow {
 
 export default function Home() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
   const [trips, setTrips] = useState<UserTrip[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -171,6 +171,15 @@ export default function Home() {
             </p>
           </div>
           <div className="flex gap-3">
+            <button
+              onClick={async () => {
+                await signOut();
+                router.push('/');
+              }}
+              className="border border-slate-600 text-slate-200 px-6 py-3 rounded-lg font-semibold hover:bg-slate-700 transition-colors"
+            >
+              Sign Out
+            </button>
             <Link
               href="/trips/join"
               className="border border-slate-600 text-slate-200 px-6 py-3 rounded-lg font-semibold hover:bg-slate-700 transition-colors"
