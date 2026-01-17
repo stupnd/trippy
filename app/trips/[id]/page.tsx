@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Plane, Hotel, Target, Calendar, Settings, Sparkles, Share2, Trash2, LogOut, Users, Circle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, Plane, Hotel, Target, Calendar, Settings, Sparkles, Share2, Trash2, LogOut, Users, Circle, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth, useTripMember } from '@/lib/auth';
 import { TripRow, TripMemberRow } from '@/lib/supabase';
@@ -32,6 +33,7 @@ export default function TripDetailPage() {
   const [budgetLoading, setBudgetLoading] = useState(false);
   const [budgetError, setBudgetError] = useState('');
   const [error, setError] = useState('');
+  const [membersDrawerOpen, setMembersDrawerOpen] = useState(false);
 
   // Auth protection
   useEffect(() => {
@@ -438,6 +440,17 @@ export default function TripDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trip?.id, members.length, preferencesUpdatedAt]);
 
+  // Handle Escape key to close drawer
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && membersDrawerOpen) {
+        setMembersDrawerOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [membersDrawerOpen]);
+
   if (authLoading || memberLoading || loading) {
     return (
       <div className="min-h-screen py-8">
@@ -600,8 +613,11 @@ export default function TripDetailPage() {
 
         {/* Bento Grid Layout */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-          {/* Member Status - Large Card */}
-          <div className="md:col-span-2 glass-card p-6 glass-card-hover">
+          {/* Member Status - Large Card (Clickable) */}
+          <button
+            onClick={() => setMembersDrawerOpen(true)}
+            className="md:col-span-2 glass-card p-6 glass-card-hover cursor-pointer text-left w-full hover:bg-white/10 transition-all"
+          >
             <div className="flex items-center gap-3 mb-4">
               <Users className="w-6 h-6 text-blue-400 opacity-80" />
               <h2 className="text-xl font-semibold text-slate-50">
@@ -612,26 +628,59 @@ export default function TripDetailPage() {
                 <span className="text-xs text-slate-400">Live</span>
               </div>
             </div>
-            <div className="flex flex-wrap gap-3">
-              {members.map((member) => (
-                <div
-                  key={member.id}
-                  className="glass-card px-4 py-2 rounded-full flex items-center gap-2 border-white/10"
-                >
-                  <span className="text-slate-200 font-medium">{member.name}</span>
-                  {member.hasPreferences ? (
-                    <span className="text-xs bg-green-500/20 text-green-300 px-2 py-0.5 rounded-full border border-green-500/30">
-                      ✓ Ready
-                    </span>
-                  ) : (
-                    <span className="text-xs bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded-full border border-yellow-500/30">
-                      ⏳ Thinking
-                    </span>
-                  )}
-                </div>
-              ))}
+            <div className="flex flex-wrap gap-3 items-center">
+              {members.map((member, index) => {
+                const initials = member.name
+                  .split(' ')
+                  .map(n => n[0])
+                  .join('')
+                  .toUpperCase()
+                  .slice(0, 2);
+                const colors = [
+                  'bg-blue-500', 'bg-purple-500', 'bg-pink-500', 'bg-emerald-500',
+                  'bg-orange-500', 'bg-cyan-500', 'bg-violet-500', 'bg-rose-500'
+                ];
+                const colorClass = colors[index % colors.length];
+                
+                return (
+                  <div key={member.id} className="relative inline-flex items-center">
+                    {/* Avatar Circle */}
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.3, delay: index * 0.1 }}
+                      className={`relative w-12 h-12 ${colorClass} rounded-full flex items-center justify-center text-white font-bold text-sm border-2 border-white/20 ${
+                        !member.hasPreferences ? 'animate-pulse' : ''
+                      }`}
+                    >
+                      {initials}
+                      
+                      {/* Pulsing ring for "Live" members */}
+                      {member.hasPreferences && (
+                        <motion.div
+                          className="absolute inset-0 rounded-full border-2 border-green-400"
+                          animate={{
+                            scale: [1, 1.3, 1],
+                            opacity: [0.6, 0, 0.6],
+                          }}
+                          transition={{
+                            duration: 2,
+                            repeat: Infinity,
+                            ease: 'easeInOut',
+                          }}
+                        />
+                      )}
+                      
+                      {/* Status indicator */}
+                      <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-slate-950 ${
+                        member.hasPreferences ? 'bg-green-400' : 'bg-yellow-400'
+                      }`} />
+                    </motion.div>
+                  </div>
+                );
+              })}
             </div>
-          </div>
+          </button>
 
           {/* Preferences Card */}
           <Link
@@ -694,33 +743,28 @@ export default function TripDetailPage() {
           )}
         </div>
 
-        {/* Progress Overview - Module Cards */}
+        {/* Progress Overview - Module Cards with Staggered Animation */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-          {/* Flights Card */}
-          <ModuleCard
-            title="Flights"
-            icon={Plane}
-            status={getModuleStatus('flights')}
-            href={`/trips/${tripId}/suggestions?tab=flights`}
-          />
-          <ModuleCard
-            title="Accommodations"
-            icon={Hotel}
-            status={getModuleStatus('accommodations')}
-            href={`/trips/${tripId}/suggestions?tab=stays`}
-          />
-          <ModuleCard
-            title="Activities"
-            icon={Target}
-            status={getModuleStatus('activities')}
-            href={`/trips/${tripId}/suggestions?tab=activities`}
-          />
-          <ModuleCard
-            title="Itinerary"
-            icon={Calendar}
-            status={getModuleStatus('itinerary')}
-            href={`/trips/${tripId}/suggestions?tab=itinerary`}
-          />
+          {[
+            { title: 'Flights', icon: Plane, status: getModuleStatus('flights'), href: `/trips/${tripId}/suggestions?tab=flights` },
+            { title: 'Accommodations', icon: Hotel, status: getModuleStatus('accommodations'), href: `/trips/${tripId}/suggestions?tab=stays` },
+            { title: 'Activities', icon: Target, status: getModuleStatus('activities'), href: `/trips/${tripId}/suggestions?tab=activities` },
+            { title: 'Itinerary', icon: Calendar, status: getModuleStatus('itinerary'), href: `/trips/${tripId}/suggestions?tab=itinerary` },
+          ].map((module, index) => (
+            <motion.div
+              key={module.title}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: index * 0.1 }}
+            >
+              <ModuleCard
+                title={module.title}
+                icon={module.icon}
+                status={module.status}
+                href={module.href}
+              />
+            </motion.div>
+          ))}
         </div>
 
         {/* Invite Card */}
@@ -760,6 +804,151 @@ export default function TripDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Members Drawer */}
+      <AnimatePresence>
+        {membersDrawerOpen && (
+          <>
+            {/* Overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMembersDrawerOpen(false)}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+            />
+
+            {/* Drawer */}
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{
+                type: 'spring',
+                damping: 30,
+                stiffness: 300,
+              }}
+              className="fixed top-0 right-0 h-full w-full max-w-md bg-white/10 backdrop-blur-xl border-l border-white/20 z-50 shadow-2xl"
+            >
+            <div className="h-full flex flex-col">
+              {/* Header */}
+              <div className="flex items-center justify-between p-6 border-b border-white/10">
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-50">Trip Members</h2>
+                  <p className="text-sm text-slate-400 mt-1">{members.length} members</p>
+                </div>
+                <button
+                  onClick={() => setMembersDrawerOpen(false)}
+                  className="glass-card p-2 rounded-xl hover:bg-white/10 transition-colors"
+                  aria-label="Close drawer"
+                >
+                  <X className="w-5 h-5 text-slate-300" />
+                </button>
+              </div>
+
+              {/* Member List */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                {members.map((member, index) => {
+                  const initials = member.name
+                    .split(' ')
+                    .map(n => n[0])
+                    .join('')
+                    .toUpperCase()
+                    .slice(0, 2);
+                  const colors = [
+                    'bg-blue-500', 'bg-purple-500', 'bg-pink-500', 'bg-emerald-500',
+                    'bg-orange-500', 'bg-cyan-500', 'bg-violet-500', 'bg-rose-500'
+                  ];
+                  const colorClass = colors[index % colors.length];
+
+                  return (
+                    <div
+                      key={member.id}
+                      className="glass-card p-4 rounded-2xl flex items-center gap-4 border-white/10"
+                    >
+                      {/* Avatar */}
+                      <div className="relative">
+                        <div className={`w-14 h-14 ${colorClass} rounded-full flex items-center justify-center text-white font-bold text-base border-2 border-white/20 ${
+                          !member.hasPreferences ? 'animate-pulse' : ''
+                        }`}>
+                          {initials}
+                        </div>
+                        
+                        {/* Live indicator ring */}
+                        {member.hasPreferences && (
+                          <motion.div
+                            className="absolute inset-0 rounded-full border-2 border-green-400"
+                            animate={{
+                              scale: [1, 1.3, 1],
+                              opacity: [0.6, 0, 0.6],
+                            }}
+                            transition={{
+                              duration: 2,
+                              repeat: Infinity,
+                              ease: 'easeInOut',
+                            }}
+                          />
+                        )}
+                        
+                        {/* Status dot */}
+                        <div className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-slate-950 ${
+                          member.hasPreferences ? 'bg-green-400' : 'bg-yellow-400'
+                        }`} />
+                      </div>
+
+                      {/* Member Info */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-lg font-semibold text-slate-50 truncate">{member.name}</h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          {member.hasPreferences ? (
+                            <span className="text-xs bg-green-500/20 text-green-300 px-3 py-1 rounded-full border border-green-500/30 font-medium">
+                              ✓ Ready
+                            </span>
+                          ) : (
+                            <span className="text-xs bg-yellow-500/20 text-yellow-300 px-3 py-1 rounded-full border border-yellow-500/30 font-medium">
+                              ⏳ Thinking
+                            </span>
+                          )}
+                          {member.hasPreferences && (
+                            <div className="flex items-center gap-1">
+                              <Circle className="w-2 h-2 fill-red-500 text-red-500 live-pulse" />
+                              <span className="text-xs text-slate-400">Live</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Footer - Invite Link */}
+              <div className="p-6 border-t border-white/10">
+                <div className="glass-card p-4 rounded-2xl">
+                  <h3 className="text-sm font-semibold text-slate-300 mb-3">Invite Code</h3>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={trip.invite_code}
+                      className="flex-1 px-3 py-2 border border-white/20 rounded-xl bg-white/5 font-mono text-sm font-bold text-center text-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                    />
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(trip.invite_code);
+                      }}
+                      className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all text-sm"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

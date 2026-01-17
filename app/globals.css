@@ -19,8 +19,7 @@
 
 body {
   color: var(--foreground);
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
-  background-attachment: fixed;
+  background: #0f172a; /* Solid dark background, world map will show through spotlight */
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   min-height: 100vh;
   position: relative;

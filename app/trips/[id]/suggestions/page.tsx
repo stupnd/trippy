@@ -5,8 +5,11 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Sparkles, Plane, Hotel, Target, Calendar, Check } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
+import MagneticButton from '@/components/MagneticButton';
+import FlightMapPath from '@/components/FlightMapPath';
 
 interface FlightSuggestion {
   id: string;
@@ -69,6 +72,7 @@ export default function SuggestionsPage() {
   const [membersCount, setMembersCount] = useState(0);
   const [votingPulse, setVotingPulse] = useState<string | null>(null);
   const [approvedItems, setApprovedItems] = useState<Set<string>>(new Set());
+  const [hoveredFlightId, setHoveredFlightId] = useState<string | null>(null);
   const summaryUpdateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -193,16 +197,36 @@ export default function SuggestionsPage() {
     // Check if approved by all members
     const newVoteCount = Object.values(newVotes[voteKey] || {}).filter(Boolean).length;
     if (newVoteCount === membersCount && membersCount > 0) {
-      // Approval celebration with confetti
+      // Approval celebration with confined confetti to card boundaries
       const itemKey = `${optionType}_${optionId}`;
       if (!approvedItems.has(itemKey)) {
         setApprovedItems(new Set([...approvedItems, itemKey]));
-        confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6 },
-          colors: ['#fbbf24', '#fcd34d', '#fde047'], // Gold colors
-        });
+        
+        // Find the card element to confine confetti
+        const cardElement = document.querySelector(`[data-flight-id="${optionId}"], [data-accommodation-id="${optionId}"], [data-activity-id="${optionId}"]`);
+        
+        if (cardElement) {
+          const rect = cardElement.getBoundingClientRect();
+          const x = (rect.left + rect.width / 2) / window.innerWidth;
+          const y = (rect.top + rect.height / 2) / window.innerHeight;
+          
+          confetti({
+            particleCount: 80,
+            spread: 40, // Reduced spread for confinement
+            origin: { x, y },
+            colors: ['#fbbf24', '#fcd34d', '#fde047'], // Gold colors
+            gravity: 0.8,
+            ticks: 200,
+          });
+        } else {
+          // Fallback to center
+          confetti({
+            particleCount: 80,
+            spread: 40,
+            origin: { y: 0.5 },
+            colors: ['#fbbf24', '#fcd34d', '#fde047'],
+          });
+        }
       }
     }
 
@@ -424,8 +448,18 @@ export default function SuggestionsPage() {
 
         {/* Flights Tab - Vertical Stack Layout */}
         {activeTab === 'flights' && (
-          <div className="flex flex-col gap-6">
-            {flights.map((flight) => {
+          <>
+            {/* Map Path Overlay */}
+            {hoveredFlightId && (
+              <FlightMapPath
+                origin={flights.find(f => f.id === hoveredFlightId)?.departure || { airport: '' }}
+                destination={flights.find(f => f.id === hoveredFlightId)?.arrival || { airport: '' }}
+                isHovered={!!hoveredFlightId}
+              />
+            )}
+            
+            <div className="flex flex-col gap-6">
+              {flights.map((flight, index) => {
               const isCheapest = cheapestFlight?.id === flight.id;
               const isFastest = fastestFlight?.id === flight.id;
               const voteCount = getVoteCount('flight', flight.id);
@@ -436,8 +470,14 @@ export default function SuggestionsPage() {
               const hasPulse = votingPulse === voteKey;
 
               return (
-                <div
+                <motion.div
                   key={flight.id}
+                  data-flight-id={flight.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: index * 0.1 }}
+                  onMouseEnter={() => setHoveredFlightId(flight.id)}
+                  onMouseLeave={() => setHoveredFlightId(null)}
                   className={`glass-edge bg-white/5 backdrop-blur-xl rounded-3xl p-6 glass-card-hover ${
                     isApproved ? 'golden-state' : ''
                   } ${hasPulse ? 'voting-pulse' : ''}`}
@@ -480,23 +520,23 @@ export default function SuggestionsPage() {
                         </div>
                       )}
                       <div className="text-right">
-                        <div className="text-3xl font-extrabold text-slate-50">${flight.price}</div>
+                        <div className="text-4xl font-black text-slate-50">${flight.price}</div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Middle Row: Airline Info */}
-                  <div className="flex items-center gap-3 mb-6">
+                  {/* Middle Row: Airline Logo */}
+                  <div className="flex items-center gap-4 mb-6">
                     <img
                       src={`https://logo.clearbit.com/${airlineDomain}`}
                       alt={flight.airline}
-                      className="h-6 w-6 rounded"
+                      className="h-12 w-12 rounded-lg bg-white/10 p-2"
                       onError={(e) => {
                         (e.target as HTMLImageElement).style.display = 'none';
                       }}
                     />
                     <div className="text-sm text-slate-300">
-                      {flight.airline} • {flight.duration}
+                      {flight.duration}
                       {flight.layovers > 0 && ` • ${flight.layovers} layover${flight.layovers > 1 ? 's' : ''} ${flight.layoverAirports.join(', ')}`}
                     </div>
                   </div>
@@ -508,8 +548,8 @@ export default function SuggestionsPage() {
                     </div>
 
                     <div className="flex gap-3">
-                      {/* Approve Button - Emerald Gradient with Checkmark */}
-                      <button
+                      {/* Approve Button - Emerald Gradient with Checkmark - Magnetic */}
+                      <MagneticButton
                         onClick={() => handleVote('flight', flight.id, true)}
                         className={`px-6 py-3 rounded-2xl font-semibold transition-all flex items-center gap-2 ${
                           userVote === true
@@ -519,7 +559,7 @@ export default function SuggestionsPage() {
                       >
                         <Check className={`w-5 h-5 ${userVote === true ? 'text-white' : 'text-emerald-400'}`} strokeWidth={2.5} />
                         Approve
-                      </button>
+                      </MagneticButton>
 
                       {/* Reject Button - Ghost with border */}
                       <button
@@ -533,21 +573,22 @@ export default function SuggestionsPage() {
                         Reject
                       </button>
 
-                      {/* Book Button - Purple/Blue Gradient with Neon Shadow */}
-                      <a
+                      {/* Book Button - Purple/Blue Gradient with Neon Shadow - Magnetic */}
+                      <MagneticButton
                         href={flight.link}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-violet-700 text-white rounded-2xl font-semibold hover:from-indigo-700 hover:to-violet-800 transition-all shadow-lg shadow-violet-600/40 hover:shadow-xl hover:shadow-violet-600/50"
                       >
                         Book
-                      </a>
+                      </MagneticButton>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
           </div>
+        </>
         )}
 
         {/* Accommodations Tab */}
