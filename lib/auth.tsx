@@ -82,9 +82,11 @@ export function useTripMember(tripId: string) {
         .from('trip_members')
         .select('id')
         .eq('trip_id', tripId)
-        .eq('id', user.id)
-        .single();
+        .eq('user_id', user.id) // Use user_id column, not id
+        .maybeSingle();
 
+      // maybeSingle returns null if not found (no error), or data if found
+      // Only treat as error if there's an actual error (not PGRST116 which is "not found")
       setIsMember(!error && !!data);
       setLoading(false);
     };

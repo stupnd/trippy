@@ -24,8 +24,9 @@ export interface TripRow {
 }
 
 export interface TripMemberRow {
-  id: string;
+  id: string; // Primary key (auto-generated UUID)
   trip_id: string;
+  user_id: string; // User identifier (auth.uid())
   name: string;
   joined_at: string;
 }
