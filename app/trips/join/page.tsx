@@ -57,14 +57,13 @@ export default function JoinTripPage() {
       // Use upsert to prevent 409 conflicts - will insert if new, update if exists
       // Let Supabase handle the primary key (id) - do NOT pass id manually
       // Matches the unique constraint on (trip_id, user_id)
-      // Note: name is required by DB schema but will be fetched from profiles table
+      // Profile data (full_name, avatar_url) will be fetched via join on the dashboard
       const { data, error: memberError } = await supabase
         .from('trip_members')
         .upsert(
           {
             trip_id: trip.id,
-            user_id: user.id,
-            name: '', // Placeholder - actual name comes from profiles.full_name
+            user_id: user.id, // Only store user_id - profile data comes from profiles table
           },
           {
             onConflict: 'trip_id, user_id', // Matches unique constraint on (trip_id, user_id)

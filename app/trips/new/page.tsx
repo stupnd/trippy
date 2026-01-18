@@ -288,13 +288,12 @@ export default function NewTripPage() {
       }
 
       // Insert creator as trip member using auth.uid()
-      // Use creator's full_name from profile (or empty string as fallback)
+      // Profile data (full_name, avatar_url) will be fetched via join on the dashboard
       const { error: memberError } = await supabase
         .from('trip_members')
         .insert({
           trip_id: tripId,
-          user_id: user.id,
-          name: creatorProfile?.full_name || '', // Auto-filled from profiles.full_name
+          user_id: user.id, // Only store user_id - profile data comes from profiles table
         });
 
       if (memberError) {
