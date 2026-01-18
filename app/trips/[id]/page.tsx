@@ -960,7 +960,7 @@ export default function TripDetailPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setMembersDrawerOpen(false)}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[90]"
+              className="fixed inset-0 bg-slate-900/20 dark:bg-black/50 backdrop-blur-sm z-[90]"
             />
 
             {/* Drawer */}
@@ -973,26 +973,26 @@ export default function TripDetailPage() {
                 damping: 30,
                 stiffness: 300,
               }}
-              className="fixed top-16 right-0 h-[calc(100vh-4rem)] w-full max-w-md bg-slate-900/95 backdrop-blur-2xl border-l border-white/20 z-[100] shadow-2xl"
+              className="fixed top-16 right-0 h-[calc(100vh-4rem)] w-full max-w-md bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-2xl border-l border-slate-200 dark:border-white/20 z-[100] shadow-2xl"
             >
             <div className="h-full flex flex-col pt-4">
               {/* Header */}
-              <div className="p-6 border-b border-white/20">
+              <div className="p-6 border-b border-slate-200 dark:border-white/20">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h2 className="text-2xl font-bold text-white tracking-tight">
+                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
                       {drawerTab === 'members' ? 'Trip Members' : 'Group Chat'}
                     </h2>
-                    <p className="text-sm text-slate-300 mt-1">
+                    <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
                       {drawerTab === 'members' ? `${members.length} members` : 'Live chat'}
                     </p>
                   </div>
                   <button
                     onClick={() => setMembersDrawerOpen(false)}
-                    className="glass-card p-2 rounded-xl hover:bg-white/10 transition-colors z-10 relative"
+                    className="glass-card p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 transition-colors z-10 relative"
                     aria-label="Close drawer"
                   >
-                    <X className="w-5 h-5 text-slate-300" />
+                    <X className="w-5 h-5 text-slate-600 dark:text-slate-300" />
                   </button>
                 </div>
 
@@ -1002,8 +1002,8 @@ export default function TripDetailPage() {
                     onClick={() => setDrawerTab('members')}
                     className={`flex-1 px-4 py-2 rounded-xl font-medium text-sm transition-all ${
                       drawerTab === 'members'
-                        ? 'bg-white/10 text-white border border-white/20'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                        ? 'bg-sky-100 text-slate-900 border border-sky-200 dark:bg-white/10 dark:text-white dark:border-white/20'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-white/5'
                     }`}
                   >
                     <div className="flex items-center justify-center gap-2">
@@ -1018,8 +1018,8 @@ export default function TripDetailPage() {
                     }}
                     className={`flex-1 px-4 py-2 rounded-xl font-medium text-sm transition-all relative ${
                       drawerTab === 'chat'
-                        ? 'bg-white/10 text-white border border-white/20'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                        ? 'bg-sky-100 text-slate-900 border border-sky-200 dark:bg-white/10 dark:text-white dark:border-white/20'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-white/5'
                     }`}
                   >
                     <div className="flex items-center justify-center gap-2">
@@ -1056,11 +1056,11 @@ export default function TripDetailPage() {
                   return (
                     <div
                       key={member.id}
-                      className="glass-card p-4 rounded-2xl flex items-center gap-4 border-white/20"
+                      className="glass-card p-4 rounded-2xl flex items-center gap-4 border-slate-200 dark:border-white/20"
                     >
                       {/* Avatar */}
                       <div className="relative">
-                        <div className={`w-14 h-14 ${colorClass} rounded-full flex items-center justify-center text-white font-bold text-base border-2 border-white/20 overflow-hidden ${
+                        <div className={`w-14 h-14 ${colorClass} rounded-full flex items-center justify-center text-white font-bold text-base border-2 border-slate-200 dark:border-white/20 overflow-hidden ${
                           !member.hasPreferences ? 'animate-pulse' : ''
                         }`}>
                           {member.avatar_url ? (
@@ -1091,28 +1091,28 @@ export default function TripDetailPage() {
                         )}
                         
                         {/* Status dot */}
-                        <div className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-slate-950 ${
+                        <div className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-slate-200 dark:border-slate-950 ${
                           member.hasPreferences ? 'bg-green-400' : 'bg-yellow-400'
                         }`} />
                       </div>
 
                       {/* Member Info */}
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-semibold text-white truncate">{member.name}</h3>
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white truncate">{member.name}</h3>
                         <div className="flex items-center gap-2 mt-1">
                           {member.hasPreferences ? (
-                            <span className="text-xs bg-green-500/20 text-green-300 px-3 py-1 rounded-full border border-green-500/30 font-medium">
+                            <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full border border-green-200 font-medium dark:bg-green-500/20 dark:text-green-300 dark:border-green-500/30">
                               ✓ Ready
                             </span>
                           ) : (
-                            <span className="text-xs bg-yellow-500/20 text-yellow-300 px-3 py-1 rounded-full border border-yellow-500/30 font-medium">
+                            <span className="text-xs bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full border border-yellow-200 font-medium dark:bg-yellow-500/20 dark:text-yellow-300 dark:border-yellow-500/30">
                               ⏳ Thinking
                             </span>
                           )}
                           {member.hasPreferences && (
                             <div className="flex items-center gap-1">
                               <Circle className="w-2 h-2 fill-red-500 text-red-500 live-pulse" />
-                              <span className="text-xs text-slate-400">Live</span>
+                              <span className="text-xs text-slate-600 dark:text-slate-400">Live</span>
                             </div>
                           )}
                         </div>
@@ -1123,21 +1123,21 @@ export default function TripDetailPage() {
               </div>
 
                   {/* Footer - Invite Link */}
-                  <div className="p-6 border-t border-white/20">
+                  <div className="p-6 border-t border-slate-200 dark:border-white/20">
                     <div className="glass-card p-4 rounded-2xl">
-                      <h3 className="text-sm font-semibold text-slate-300 mb-3">Invite Code</h3>
+                      <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Invite Code</h3>
                       <div className="flex gap-2">
                         <input
                           type="text"
                           readOnly
                           value={trip.invite_code}
-                          className="flex-1 px-3 py-2 border border-white/20 rounded-xl bg-slate-900/60 backdrop-blur-xl font-mono text-sm font-bold text-center text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                          className="flex-1 px-3 py-2 border border-slate-200 dark:border-white/20 rounded-xl bg-white dark:bg-slate-900/60 backdrop-blur-xl font-mono text-sm font-bold text-center text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-300/60 dark:focus:ring-blue-500/50"
                         />
                         <button
                           onClick={() => {
                             navigator.clipboard.writeText(trip.invite_code);
                           }}
-                          className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all text-sm"
+                          className="px-4 py-2 bg-sky-200 text-slate-900 rounded-xl font-semibold hover:bg-sky-300 transition-colors text-sm dark:bg-gradient-to-r dark:from-blue-600 dark:to-purple-600 dark:text-white dark:hover:from-blue-700 dark:hover:to-purple-700"
                         >
                           Copy
                         </button>
@@ -1389,11 +1389,11 @@ function DrawerChat({ tripId, members }: { tripId: string; members: MemberWithSt
   return (
     <div className="flex-1 flex flex-col min-h-0">
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-hide">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-hide bg-slate-50/80 dark:bg-transparent border border-slate-200/70 dark:border-transparent rounded-2xl transition-colors">
         {loading ? (
-          <div className="text-slate-400 text-sm text-center py-8">Loading messages...</div>
+          <div className="text-slate-600 dark:text-slate-400 text-sm text-center py-8">Loading messages...</div>
         ) : messages.length === 0 ? (
-          <div className="text-slate-400 text-sm text-center py-8">No messages yet. Start the conversation!</div>
+          <div className="text-slate-600 dark:text-slate-400 text-sm text-center py-8">No messages yet. Start the conversation!</div>
         ) : (
           messages.map((message) => {
             const isMine = isMyMessage(message);
@@ -1430,15 +1430,15 @@ function DrawerChat({ tripId, members }: { tripId: string; members: MemberWithSt
                         )}
                       </div>
                     )}
-                    <span className="text-xs text-slate-400">{message.sender_name}</span>
+                    <span className="text-xs text-slate-600 dark:text-slate-400">{message.sender_name}</span>
                   </div>
                   
                   {/* Message bubble */}
                   <div
                     className={`rounded-2xl px-3 py-2 ${
                       isMine
-                        ? 'bg-indigo-600/80 text-white'
-                        : 'bg-white/10 text-slate-200 border border-white/20'
+                        ? 'bg-blue-100 text-slate-900 dark:bg-indigo-600/80 dark:text-white'
+                        : 'bg-slate-50 text-slate-900 border border-slate-200 dark:bg-white/10 dark:text-slate-200 dark:border-white/20'
                     }`}
                   >
                     <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
@@ -1456,7 +1456,7 @@ function DrawerChat({ tripId, members }: { tripId: string; members: MemberWithSt
           <div className="flex justify-start">
             <div className="flex flex-col max-w-[75%]">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-slate-600 dark:text-slate-400">
                   {Array.from(typingUsers)
                     .map((memberId) => {
                       const member = members.find(m => m.id === memberId || m.user_id === memberId);
@@ -1466,20 +1466,20 @@ function DrawerChat({ tripId, members }: { tripId: string; members: MemberWithSt
                   {typingUsers.size === 1 ? ' is' : ' are'} typing
                 </span>
               </div>
-              <div className="bg-white/10 text-slate-200 border border-white/20 rounded-2xl px-4 py-3">
+              <div className="bg-slate-50 text-slate-900 border border-slate-200 dark:bg-white/10 dark:text-slate-200 dark:border-white/20 rounded-2xl px-4 py-3">
                 <div className="flex gap-1 items-center">
                   <motion.div
-                    className="w-2 h-2 bg-slate-400 rounded-full"
+                    className="w-2 h-2 bg-slate-500 dark:bg-slate-400 rounded-full"
                     animate={{ y: [0, -8, 0] }}
                     transition={{ duration: 0.6, repeat: Infinity, delay: 0 }}
                   />
                   <motion.div
-                    className="w-2 h-2 bg-slate-400 rounded-full"
+                    className="w-2 h-2 bg-slate-500 dark:bg-slate-400 rounded-full"
                     animate={{ y: [0, -8, 0] }}
                     transition={{ duration: 0.6, repeat: Infinity, delay: 0.2 }}
                   />
                   <motion.div
-                    className="w-2 h-2 bg-slate-400 rounded-full"
+                    className="w-2 h-2 bg-slate-500 dark:bg-slate-400 rounded-full"
                     animate={{ y: [0, -8, 0] }}
                     transition={{ duration: 0.6, repeat: Infinity, delay: 0.4 }}
                   />
@@ -1492,7 +1492,7 @@ function DrawerChat({ tripId, members }: { tripId: string; members: MemberWithSt
       </div>
 
       {/* Input */}
-      <div className="p-4 border-t border-white/20">
+      <div className="p-4 border-t border-slate-200 dark:border-white/20 transition-colors">
         <form onSubmit={handleSend} className="flex gap-2">
           <input
             type="text"
@@ -1510,12 +1510,12 @@ function DrawerChat({ tripId, members }: { tripId: string; members: MemberWithSt
             }}
             placeholder="Type a message..."
             disabled={sending}
-            className="flex-1 px-3 py-2 bg-slate-900/60 backdrop-blur-xl border border-white/20 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 focus:outline-none disabled:opacity-50 text-sm"
+            className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 focus:outline-none disabled:opacity-50 text-sm transition-colors dark:bg-slate-900/60 dark:border-white/20 dark:text-white dark:placeholder-slate-400 dark:focus:ring-blue-500/50 dark:focus:border-blue-500/50"
           />
           <button
             type="submit"
             disabled={!newMessage.trim() || sending}
-            className="px-3 py-2 bg-gradient-to-r from-indigo-600 to-violet-700 text-white rounded-xl font-medium hover:from-indigo-700 hover:to-violet-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            className="px-3 py-2 bg-sky-200 text-slate-900 rounded-xl font-medium hover:bg-sky-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center dark:bg-gradient-to-r dark:from-indigo-600 dark:to-violet-700 dark:text-white dark:hover:from-indigo-700 dark:hover:to-violet-800"
           >
             <Send className="w-4 h-4" />
           </button>
