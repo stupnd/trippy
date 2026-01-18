@@ -10,7 +10,6 @@ export default function JoinTripPage() {
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const [inviteCode, setInviteCode] = useState('');
-  const [userName, setUserName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -58,13 +57,14 @@ export default function JoinTripPage() {
       // Use upsert to prevent 409 conflicts - will insert if new, update if exists
       // Let Supabase handle the primary key (id) - do NOT pass id manually
       // Matches the unique constraint on (trip_id, user_id)
+      // Note: name is required by DB schema but will be fetched from profiles table
       const { data, error: memberError } = await supabase
         .from('trip_members')
         .upsert(
           {
             trip_id: trip.id,
             user_id: user.id,
-            name: userName,
+            name: '', // Placeholder - actual name comes from profiles.full_name
           },
           {
             onConflict: 'trip_id, user_id', // Matches unique constraint on (trip_id, user_id)
@@ -136,21 +136,6 @@ export default function JoinTripPage() {
               <p className="mt-1 text-sm text-slate-400">
                 Enter the 6-character code shared by your trip organizer
               </p>
-            </div>
-
-            <div>
-              <label htmlFor="userName" className="block text-sm font-medium text-slate-200 mb-2">
-                Your Display Name
-              </label>
-              <input
-                type="text"
-                id="userName"
-                required
-                value={userName}
-                onChange={(e) => setUserName(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Jane Doe"
-              />
             </div>
 
             {error && (

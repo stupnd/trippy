@@ -13,13 +13,13 @@ export default function NewTripPage() {
   const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [creatorProfile, setCreatorProfile] = useState<{ full_name?: string; avatar_url?: string | null } | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     city: '',
     country: '',
     startDate: '',
     endDate: '',
-    userName: '',
   });
 
   // Prefill destination and dates from query params
@@ -66,6 +66,37 @@ export default function NewTripPage() {
     }
   }, [authLoading, user, router]);
 
+  // Fetch creator profile on mount - always fetch latest from profiles table
+  useEffect(() => {
+    if (!user) return;
+    
+    const fetchCreatorProfile = async () => {
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('full_name, avatar_url')
+          .eq('id', user.id)
+          .maybeSingle();
+        
+        if (error) {
+          console.error('Error fetching creator profile:', error);
+        }
+        
+        if (profile) {
+          setCreatorProfile(profile);
+        } else {
+          // Profile doesn't exist yet - set to null so we show warning
+          setCreatorProfile(null);
+        }
+      } catch (err) {
+        console.error('Error fetching creator profile:', err);
+        setCreatorProfile(null);
+      }
+    };
+    
+    fetchCreatorProfile();
+  }, [user]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -103,12 +134,13 @@ export default function NewTripPage() {
       }
 
       // Insert creator as trip member using auth.uid()
+      // Use creator's full_name from profile (or empty string as fallback)
       const { error: memberError } = await supabase
         .from('trip_members')
         .insert({
           trip_id: tripId,
           user_id: user.id,
-          name: formData.userName,
+          name: creatorProfile?.full_name || '', // Auto-filled from profiles.full_name
         });
 
       if (memberError) {
@@ -126,8 +158,8 @@ export default function NewTripPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
-        <div className="text-slate-700 dark:text-slate-200">Loading...</div>
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-slate-300">Loading...</div>
       </div>
     );
   }
@@ -137,16 +169,31 @@ export default function NewTripPage() {
   }
 
   return (
-    <div className="min-h-screen pb-12 bg-slate-50 dark:bg-slate-900">
+    <div className="min-h-screen pb-12 bg-slate-900">
       <div className="container mx-auto px-4 md:px-8 max-w-2xl">
-        <div className="card-surface rounded-lg shadow-xl p-8">
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-10 tracking-tight">
+        <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-lg shadow-xl p-8">
+          <h1 className="text-3xl font-bold text-white mb-10 tracking-tight">
             Create a New Trip
           </h1>
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Creator Identity Display */}
+            {creatorProfile?.full_name ? (
+              <div className="bg-zinc-900/50 border border-white/10 rounded-lg px-4 py-3">
+                <p className="text-sm text-slate-400">
+                  Creating as: <span className="font-semibold text-slate-300">{creatorProfile.full_name}</span>
+                </p>
+              </div>
+            ) : user && (
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3">
+                <p className="text-sm text-amber-400">
+                  ⚠️ Please set up your profile name in <a href="/profile" className="underline hover:text-amber-300">Profile Settings</a> before creating a trip.
+                </p>
+              </div>
+            )}
+
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+              <label htmlFor="name" className="block text-sm font-medium text-slate-400 mb-2">
                 Trip Name
               </label>
               <input
@@ -155,13 +202,13 @@ export default function NewTripPage() {
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-50 dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                className="w-full px-4 py-2 bg-zinc-900/50 border border-white/10 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400/20 focus:border-white/20"
                 placeholder="Summer Vacation 2024"
               />
             </div>
 
             <div>
-              <label htmlFor="destination" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+              <label htmlFor="destination" className="block text-sm font-medium text-slate-400 mb-2">
                 Destination
               </label>
               <div className="grid grid-cols-2 gap-4">
@@ -171,7 +218,7 @@ export default function NewTripPage() {
                   required
                   value={formData.city}
                   onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                  className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-50 dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                  className="px-4 py-2 bg-zinc-900/50 border border-white/10 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400/20 focus:border-white/20"
                   placeholder="City"
                 />
                 <input
@@ -180,7 +227,7 @@ export default function NewTripPage() {
                   required
                   value={formData.country}
                   onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                  className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-50 dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                  className="px-4 py-2 bg-zinc-900/50 border border-white/10 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400/20 focus:border-white/20"
                   placeholder="Country"
                 />
               </div>
@@ -188,7 +235,7 @@ export default function NewTripPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="startDate" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+                <label htmlFor="startDate" className="block text-sm font-medium text-slate-400 mb-2">
                   Start Date
                 </label>
                 <input
@@ -197,11 +244,11 @@ export default function NewTripPage() {
                   required
                   value={formData.startDate}
                   onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                  className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-50 dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                  className="w-full px-4 py-2 bg-zinc-900/50 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-slate-400/20 focus:border-white/20"
                 />
               </div>
               <div>
-                <label htmlFor="endDate" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+                <label htmlFor="endDate" className="block text-sm font-medium text-slate-400 mb-2">
                   End Date
                 </label>
                 <input
@@ -210,28 +257,13 @@ export default function NewTripPage() {
                   required
                   value={formData.endDate}
                   onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                  className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-50 dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                  className="w-full px-4 py-2 bg-zinc-900/50 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-slate-400/20 focus:border-white/20"
                 />
               </div>
             </div>
 
-            <div>
-              <label htmlFor="userName" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
-                Your Display Name
-              </label>
-              <input
-                type="text"
-                id="userName"
-                required
-                value={formData.userName}
-                onChange={(e) => setFormData({ ...formData, userName: e.target.value })}
-                className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-50 dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                placeholder="John Doe"
-              />
-            </div>
-
             {error && (
-              <div className="bg-red-100 border border-red-200 text-red-700 px-4 py-3 rounded-lg dark:bg-red-900 dark:border-red-700 dark:text-red-100">
+              <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-lg">
                 {error}
               </div>
             )}
@@ -239,15 +271,15 @@ export default function NewTripPage() {
             <div className="flex gap-4">
               <button
                 type="submit"
-                disabled={loading}
-                className="flex-1 bg-sky-200 text-slate-900 px-6 py-3 rounded-lg font-semibold hover:bg-sky-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed dark:bg-blue-600 dark:text-white dark:hover:bg-blue-700"
+                disabled={loading || !creatorProfile?.full_name}
+                className="flex-1 bg-slate-800 text-white px-6 py-3 rounded-lg font-semibold hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-white/10"
               >
                 {loading ? 'Creating...' : 'Create Trip'}
               </button>
               <button
                 type="button"
                 onClick={() => router.back()}
-                className="px-6 py-3 border border-slate-200 text-slate-800 rounded-lg font-semibold hover:bg-slate-100 transition-colors dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+                className="px-6 py-3 border border-white/10 text-slate-300 rounded-lg font-semibold hover:bg-white/5 transition-colors"
               >
                 Cancel
               </button>

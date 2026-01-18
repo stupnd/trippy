@@ -86,6 +86,25 @@ export async function POST(request: NextRequest) {
     // Ensure members is an array (handle null/undefined)
     const membersList = members || [];
 
+    // Fetch profiles for all members
+    const memberUserIds = membersList.map((m: any) => m.user_id).filter(Boolean);
+    let profilesMap = new Map<string, { full_name?: string }>();
+    
+    if (memberUserIds.length > 0) {
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', memberUserIds);
+      
+      (profilesData || []).forEach(profile => {
+        if (profile.id) {
+          profilesMap.set(profile.id, {
+            full_name: profile.full_name || undefined,
+          });
+        }
+      });
+    }
+
     // Fetch user preferences - handle empty results (this is OK - some users may not have preferences yet)
     const { data: preferences, error: preferencesError } = await supabase
       .from('user_preferences')
@@ -104,12 +123,13 @@ export async function POST(request: NextRequest) {
     const preferencesList = preferences || [];
 
     // Prepare preference data for the prompt - handle empty preferences gracefully
-    const membersWithPreferences = membersList.map((member) => {
+    const membersWithPreferences = membersList.map((member: any) => {
       const memberPrefs = preferencesList.find(
         (p) => p.member_id === member.id
       );
+      const profile = member.user_id ? profilesMap.get(member.user_id) : null;
       return {
-        name: member.name || 'Unknown',
+        name: profile?.full_name || 'Traveler',
         preferences: memberPrefs || null,
       };
     });

@@ -24,7 +24,7 @@ const avatarPresets = [
   { id: 'pilot', icon: Plane, label: 'Pilot', color: 'from-blue-500 to-cyan-500' },
   { id: 'hiker', icon: Mountain, label: 'Hiker', color: 'from-green-500 to-emerald-500' },
   { id: 'explorer', icon: Compass, label: 'Explorer', color: 'from-orange-500 to-red-500' },
-  { id: 'traveler', icon: UserCircle, label: 'Traveler', color: 'from-purple-500 to-pink-500' },
+  { id: 'traveler', icon: UserCircle, label: 'Traveler', color: 'from-slate-500 to-zinc-600' },
 ];
 
 export default function ProfilePage() {
@@ -138,13 +138,13 @@ export default function ProfilePage() {
         else if (totalTrips > 0) explorerLevel = 'Explorer';
 
         setProfile({
-          name: profileData?.name || user.email?.split('@')[0] || 'Traveler',
+          name: profileData?.full_name || user.email?.split('@')[0] || 'Traveler',
           email: user.email || '',
           bio: profileData?.bio || '',
           avatar_url: profileData?.avatar_url || null,
         });
         setOriginalProfile({
-          name: profileData?.name || user.email?.split('@')[0] || 'Traveler',
+          name: profileData?.full_name || user.email?.split('@')[0] || 'Traveler',
           email: user.email || '',
           bio: profileData?.bio || '',
           avatar_url: profileData?.avatar_url || null,
@@ -434,7 +434,7 @@ export default function ProfilePage() {
         .from('profiles')
         .upsert({
           id: user.id,
-          [field]: value,
+          [field === 'name' ? 'full_name' : field]: value,
           email: profile.email, // Keep email
         }, { onConflict: 'id' });
 
@@ -515,7 +515,7 @@ export default function ProfilePage() {
                 y: springY,
               }}
             >
-              <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-white/20 bg-gradient-to-br from-indigo-500 to-purple-600">
+              <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-slate-400/30">
                 {profile.avatar_url ? (
                   <img
                     src={profile.avatar_url}
@@ -572,10 +572,10 @@ export default function ProfilePage() {
                   setFocusedField(null);
                   saveField('name');
                 }}
-                className={`w-full px-4 pt-6 pb-2 bg-white border rounded-2xl text-slate-900 placeholder-transparent focus:outline-none focus:ring-2 transition-all dark:bg-slate-900/60 dark:text-white ${
+                className={`w-full px-4 pt-6 pb-2 bg-zinc-900/50 border border-white/10 rounded-2xl text-white placeholder-transparent focus:outline-none focus:ring-2 transition-all ${
                   savedFields.has('name')
-                    ? 'border-green-400 ring-2 ring-green-200/60 dark:border-green-500/50 dark:ring-green-500/20'
-                    : 'border-slate-200 focus:border-sky-300 focus:ring-sky-300/60 dark:border-white/20 dark:focus:border-indigo-500/50 dark:focus:ring-indigo-500/20'
+                    ? 'border-green-400 ring-2 ring-green-200/60'
+                    : 'focus:border-cyan-400/50 focus:ring-cyan-400/20'
                 }`}
               />
               {savedFields.has('name') && (
@@ -632,10 +632,10 @@ export default function ProfilePage() {
                   saveField('bio');
                 }}
                 rows={4}
-                className={`w-full px-4 pt-6 pb-2 bg-white border rounded-2xl text-slate-900 placeholder-transparent focus:outline-none focus:ring-2 transition-all resize-none dark:bg-slate-900/60 dark:text-white ${
+                className={`w-full px-4 pt-6 pb-2 bg-zinc-900/50 border border-white/10 rounded-2xl text-white placeholder-transparent focus:outline-none focus:ring-2 transition-all resize-none ${
                   savedFields.has('bio')
-                    ? 'border-green-400 ring-2 ring-green-200/60 dark:border-green-500/50 dark:ring-green-500/20'
-                    : 'border-slate-200 focus:border-sky-300 focus:ring-sky-300/60 dark:border-white/20 dark:focus:border-indigo-500/50 dark:focus:ring-indigo-500/20'
+                    ? 'border-green-400 ring-2 ring-green-200/60'
+                    : 'focus:border-cyan-400/50 focus:ring-cyan-400/20'
                 }`}
               />
               {savedFields.has('bio') && (
@@ -670,7 +670,7 @@ export default function ProfilePage() {
             transition={{ delay: 0.2 }}
             className="glass-card rounded-3xl p-6 text-center"
           >
-            <User className="w-10 h-10 text-purple-400 mx-auto mb-3" />
+            <User className="w-10 h-10 text-slate-400 mx-auto mb-3" />
             <div className="text-3xl font-bold text-white mb-1">{stats.connections}</div>
             <div className="text-slate-400 text-sm">Connections</div>
           </motion.div>
