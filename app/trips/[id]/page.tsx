@@ -1357,8 +1357,8 @@ export default function TripDetailPage() {
                   .toUpperCase()
                   .slice(0, 2);
                 const colors = [
-                  'bg-blue-500', 'bg-purple-500', 'bg-pink-500', 'bg-emerald-500',
-                  'bg-orange-500', 'bg-cyan-500', 'bg-violet-500', 'bg-rose-500'
+                  'bg-slate-600', 'bg-zinc-700', 'bg-neutral-700', 'bg-slate-700',
+                  'bg-zinc-600', 'bg-slate-800', 'bg-neutral-800', 'bg-zinc-800'
                 ];
                 const colorClass = colors[index % colors.length];
                 
@@ -1561,7 +1561,7 @@ export default function TripDetailPage() {
 
         {/* Invite Card */}
         <div className="glass-card p-6">
-          <h3 className="text-xl font-semibold mb-4 text-white flex items-center gap-2 tracking-tight">
+          <h3 className="text-xl font-semibold mb-4 text-slate-900 dark:text-white flex items-center gap-2 tracking-tight">
             <Share2 className="w-5 h-5 text-blue-400 opacity-80" />
             Invite Friends
           </h3>
@@ -1571,22 +1571,22 @@ export default function TripDetailPage() {
                 type="text"
                 readOnly
                 value={trip.invite_code}
-                      className="flex-1 px-4 py-3 border border-white/20 rounded-2xl bg-slate-900/60 backdrop-blur-xl font-mono text-sm font-bold text-center text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                className="flex-1 px-4 py-3 border border-slate-200 dark:border-white/20 rounded-2xl bg-white dark:bg-slate-900/60 backdrop-blur-xl font-mono text-sm font-bold text-center text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-300/60 dark:focus:ring-blue-500/50"
               />
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(trip.invite_code);
                 }}
-                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-2xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all glass-card-hover"
+                className="px-6 py-3 bg-sky-200 text-slate-900 rounded-2xl font-semibold hover:bg-sky-300 transition-all dark:bg-gradient-to-r dark:from-blue-600 dark:to-purple-600 dark:text-white dark:hover:from-blue-700 dark:hover:to-purple-700"
               >
                 Copy
               </button>
             </div>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-600 dark:text-slate-400">
               Share this code or{' '}
               <a
                 href={inviteLink}
-                className="text-blue-400 hover:underline"
+                className="text-blue-600 hover:underline dark:text-blue-400"
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -2164,7 +2164,7 @@ function DrawerChat({ tripId, members }: { tripId: string; members: MemberWithSt
           <button
             type="submit"
             disabled={!newMessage.trim() || sending}
-            className="px-3 py-2 bg-sky-200 text-slate-900 rounded-xl font-medium hover:bg-sky-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center dark:bg-gradient-to-r dark:from-indigo-600 dark:to-violet-700 dark:text-white dark:hover:from-indigo-700 dark:hover:to-violet-800"
+            className="px-3 py-2 bg-transparent border border-white/10 text-white rounded-xl font-medium hover:border-white/20 hover:bg-white/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
           >
             <Send className="w-4 h-4" />
           </button>
@@ -2191,11 +2191,28 @@ function ModuleCard({
   const getStatusColor = () => {
     switch (status) {
       case 'Awaiting Preferences':
-        return 'text-slate-400';
+        return 'text-slate-600 dark:text-slate-400';
       case 'Ready to Generate':
-        return 'text-green-400';
+        return 'text-green-600 dark:text-green-400';
       case 'Locked':
-        return 'text-red-400';
+        return 'text-red-600 dark:text-red-400';
+      default:
+        return 'text-slate-600 dark:text-slate-400';
+    }
+  };
+
+  const getIconColor = () => {
+    switch (title) {
+      case 'Flights':
+        return 'bg-gradient-to-br from-blue-400 to-cyan-500 bg-clip-text text-transparent';
+      case 'Accommodations':
+        return 'bg-gradient-to-br from-amber-400 to-orange-500 bg-clip-text text-transparent';
+      case 'Activities':
+        return 'bg-gradient-to-br from-purple-400 to-pink-500 bg-clip-text text-transparent';
+      case 'Itinerary':
+        return 'bg-gradient-to-br from-emerald-400 to-teal-500 bg-clip-text text-transparent';
+      case 'Food Recommendations':
+        return 'bg-gradient-to-br from-rose-400 to-pink-500 bg-clip-text text-transparent';
       default:
         return 'text-slate-400';
     }
@@ -2219,15 +2236,15 @@ function ModuleCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: index * 0.1 }}
-      whileHover={{ y: -5 }}
+      whileHover={{ scale: 1.02 }}
       className="h-full"
     >
       <Link
         href={href}
-        className="bg-slate-900/60 backdrop-blur-xl border border-white/20 rounded-3xl p-6 flex flex-col hover:bg-slate-900/70 transition-all h-full"
+        className="card-surface border border-slate-200 dark:border-white/20 rounded-3xl p-6 flex flex-col hover:bg-slate-100 dark:hover:bg-slate-900/70 transition-all h-full"
       >
         <Icon className="w-8 h-8 text-blue-400 opacity-80 mb-3" />
-        <h3 className="text-lg font-semibold mb-3 text-white tracking-tight">{title}</h3>
+        <h3 className="text-lg font-semibold mb-3 text-slate-900 dark:text-white tracking-tight">{title}</h3>
         <div className="flex items-center gap-2 mt-auto">
           <span className={`text-lg ${getStatusColor()}`}>{getStatusIcon()}</span>
           <span className={`text-sm font-medium ${getStatusColor()}`}>
