@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Plane, Hotel, Target, Calendar, Settings, Sparkles, Share2, Trash2, LogOut, Users, Circle, X } from 'lucide-react';
+import { ArrowLeft, Plane, Hotel, Target, Calendar, Settings, Sparkles, Share2, Trash2, LogOut, Users, Circle, X, MessageCircle, Send } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth, useTripMember } from '@/lib/auth';
 import { TripRow, TripMemberRow } from '@/lib/supabase';
@@ -35,6 +35,8 @@ export default function TripDetailPage() {
   const [budgetError, setBudgetError] = useState('');
   const [error, setError] = useState('');
   const [membersDrawerOpen, setMembersDrawerOpen] = useState(false);
+  const [drawerTab, setDrawerTab] = useState<'members' | 'chat'>('members');
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Auth protection
   useEffect(() => {
@@ -452,6 +454,45 @@ export default function TripDetailPage() {
     return () => window.removeEventListener('keydown', handleEscape);
   }, [membersDrawerOpen]);
 
+  // Track unread messages when drawer is closed
+  useEffect(() => {
+    if (!user || members.length === 0) return;
+
+    const currentMember = members.find(m => m.user_id === user.id);
+    if (!currentMember) return;
+
+    // Only listen for new messages when drawer is closed or chat tab is not active
+    const shouldTrackUnread = !membersDrawerOpen || drawerTab !== 'chat';
+
+    if (!shouldTrackUnread) {
+      return; // Don't track unread when chat is visible
+    }
+
+    const channel = supabase
+      .channel(`trip_unread_messages_${tripId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `trip_id=eq.${tripId}`,
+        },
+        (payload) => {
+          const newMsg = payload.new as any;
+          // Only count messages from others
+          if (newMsg.member_id !== currentMember.id) {
+            setUnreadCount((prev) => prev + 1);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [tripId, members, user, membersDrawerOpen, drawerTab]);
+
   if (authLoading || memberLoading || loading) {
     return (
       <div className="min-h-screen pb-8">
@@ -624,9 +665,17 @@ export default function TripDetailPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
           {/* Member Status - Large Card (Clickable) */}
           <button
-            onClick={() => setMembersDrawerOpen(true)}
-            className="md:col-span-2 glass-card p-6 glass-card-hover cursor-pointer text-left w-full hover:bg-white/10 transition-all"
+            onClick={() => {
+              setMembersDrawerOpen(true);
+              setDrawerTab('members');
+            }}
+            className="md:col-span-2 glass-card p-6 glass-card-hover cursor-pointer text-left w-full hover:bg-white/10 transition-all relative"
           >
+            {unreadCount > 0 && (
+              <span className="absolute top-4 right-4 w-6 h-6 bg-red-500 rounded-full text-white text-xs font-bold flex items-center justify-center animate-pulse z-10">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
             <div className="flex items-center gap-3 mb-4">
               <Users className="w-6 h-6 text-blue-400 opacity-80" />
               <h2 className="text-xl font-semibold text-white tracking-tight">
@@ -900,22 +949,69 @@ export default function TripDetailPage() {
             >
             <div className="h-full flex flex-col">
               {/* Header */}
-              <div className="flex items-center justify-between p-6 border-b border-white/20">
-                <div>
-                  <h2 className="text-2xl font-bold text-white tracking-tight">Trip Members</h2>
-                  <p className="text-sm text-slate-300 mt-1">{members.length} members</p>
+              <div className="p-6 border-b border-white/20">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-2xl font-bold text-white tracking-tight">
+                      {drawerTab === 'members' ? 'Trip Members' : 'Group Chat'}
+                    </h2>
+                    <p className="text-sm text-slate-300 mt-1">
+                      {drawerTab === 'members' ? `${members.length} members` : 'Live chat'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setMembersDrawerOpen(false)}
+                    className="glass-card p-2 rounded-xl hover:bg-white/10 transition-colors"
+                    aria-label="Close drawer"
+                  >
+                    <X className="w-5 h-5 text-slate-300" />
+                  </button>
                 </div>
-                <button
-                  onClick={() => setMembersDrawerOpen(false)}
-                  className="glass-card p-2 rounded-xl hover:bg-white/10 transition-colors"
-                  aria-label="Close drawer"
-                >
-                  <X className="w-5 h-5 text-slate-300" />
-                </button>
+
+                {/* Tab Switcher */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setDrawerTab('members')}
+                    className={`flex-1 px-4 py-2 rounded-xl font-medium text-sm transition-all ${
+                      drawerTab === 'members'
+                        ? 'bg-white/10 text-white border border-white/20'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <Users className="w-4 h-4" />
+                      Members
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setDrawerTab('chat');
+                      setUnreadCount(0); // Clear unread count when opening chat
+                    }}
+                    className={`flex-1 px-4 py-2 rounded-xl font-medium text-sm transition-all relative ${
+                      drawerTab === 'chat'
+                        ? 'bg-white/10 text-white border border-white/20'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <MessageCircle className="w-4 h-4" />
+                      Chat
+                      {unreadCount > 0 && drawerTab === 'members' && (
+                        <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-white text-xs font-bold flex items-center justify-center">
+                          {unreadCount > 9 ? '9+' : unreadCount}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                </div>
               </div>
 
-              {/* Member List */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {/* Content based on selected tab */}
+              {drawerTab === 'members' ? (
+                <>
+                  {/* Member List */}
+                  <div className="flex-1 overflow-y-auto p-6 space-y-4">
                 {members.map((member, index) => {
                   const initials = member.name
                     .split(' ')
@@ -990,33 +1086,238 @@ export default function TripDetailPage() {
                 })}
               </div>
 
-              {/* Footer - Invite Link */}
-              <div className="p-6 border-t border-white/20">
-                <div className="glass-card p-4 rounded-2xl">
-                  <h3 className="text-sm font-semibold text-slate-300 mb-3">Invite Code</h3>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      readOnly
-                      value={trip.invite_code}
-                      className="flex-1 px-3 py-2 border border-white/20 rounded-xl bg-slate-900/60 backdrop-blur-xl font-mono text-sm font-bold text-center text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                    />
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(trip.invite_code);
-                      }}
-                      className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all text-sm"
-                    >
-                      Copy
-                    </button>
+                  {/* Footer - Invite Link */}
+                  <div className="p-6 border-t border-white/20">
+                    <div className="glass-card p-4 rounded-2xl">
+                      <h3 className="text-sm font-semibold text-slate-300 mb-3">Invite Code</h3>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          readOnly
+                          value={trip.invite_code}
+                          className="flex-1 px-3 py-2 border border-white/20 rounded-xl bg-slate-900/60 backdrop-blur-xl font-mono text-sm font-bold text-center text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                        />
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(trip.invite_code);
+                          }}
+                          className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all text-sm"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
+                </>
+              ) : (
+                <DrawerChat tripId={tripId} members={members} />
+              )}
             </div>
             </motion.div>
           </>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+// Drawer Chat Component
+function DrawerChat({ tripId, members }: { tripId: string; members: MemberWithStatus[] }) {
+  const { user } = useAuth();
+  const [messages, setMessages] = useState<any[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Get member color matching drawer avatars
+  const getMemberColor = (memberId: string) => {
+    const index = members.findIndex(m => m.id === memberId || m.user_id === memberId);
+    const colors = [
+      'bg-blue-500', 'bg-purple-500', 'bg-pink-500', 'bg-emerald-500',
+      'bg-orange-500', 'bg-cyan-500', 'bg-violet-500', 'bg-rose-500'
+    ];
+    return colors[index % colors.length] || 'bg-slate-500';
+  };
+
+  const currentMember = members.find(m => m.user_id === user?.id);
+  const isMyMessage = (message: any) => message.member_id === currentMember?.id;
+
+  // Fetch initial messages
+  useEffect(() => {
+    const fetchMessages = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('trip_id', tripId)
+          .order('created_at', { ascending: false })
+          .limit(50);
+
+        if (error) throw error;
+
+        const enrichedMessages = (data || [])
+          .map((msg) => {
+            const member = members.find(m => m.id === msg.member_id || m.user_id === msg.member_id);
+            return { ...msg, sender_name: member?.name || 'Unknown' };
+          })
+          .reverse();
+
+        setMessages(enrichedMessages);
+      } catch (error) {
+        console.error('Error fetching messages:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMessages();
+  }, [tripId, members]);
+
+  // Set up realtime subscription
+  useEffect(() => {
+    const channel = supabase
+      .channel(`trip_messages_${tripId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `trip_id=eq.${tripId}`,
+        },
+        (payload) => {
+          const newMsg = payload.new as any;
+          const member = members.find(m => m.id === newMsg.member_id || m.user_id === newMsg.member_id);
+          setMessages((prev) => [
+            ...prev,
+            { ...newMsg, sender_name: member?.name || 'Unknown' },
+          ]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [tripId, members]);
+
+  // Auto-scroll
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !currentMember || sending) return;
+
+    setSending(true);
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .insert({
+          trip_id: tripId,
+          member_id: currentMember.id,
+          content: newMessage.trim(),
+        });
+
+      if (error) throw error;
+      setNewMessage('');
+    } catch (error: any) {
+      console.error('Error sending message:', error);
+      alert(error?.message || 'Failed to send message.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  if (!user || !currentMember) return null;
+
+  return (
+    <div className="flex-1 flex flex-col min-h-0">
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-hide">
+        {loading ? (
+          <div className="text-slate-400 text-sm text-center py-8">Loading messages...</div>
+        ) : messages.length === 0 ? (
+          <div className="text-slate-400 text-sm text-center py-8">No messages yet. Start the conversation!</div>
+        ) : (
+          messages.map((message) => {
+            const isMine = isMyMessage(message);
+            const senderColor = getMemberColor(message.member_id);
+            const senderIndex = members.findIndex(m => m.id === message.member_id || m.user_id === message.member_id);
+            const senderInitials = message.sender_name
+              ?.split(' ')
+              .map((n: string) => n[0])
+              .join('')
+              .toUpperCase()
+              .slice(0, 2) || '?';
+
+            return (
+              <motion.div
+                key={message.id}
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.2 }}
+                className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}
+              >
+                <div className={`flex flex-col max-w-[75%] ${isMine ? 'items-end' : 'items-start'}`}>
+                  {/* Sender name */}
+                  <div className={`flex items-center gap-2 mb-1 ${isMine ? 'flex-row-reverse' : ''}`}>
+                    {!isMine && (
+                      <div className={`w-6 h-6 ${senderColor} rounded-full flex items-center justify-center text-white text-xs font-bold border border-white/20`}>
+                        {senderInitials}
+                      </div>
+                    )}
+                    <span className="text-xs text-slate-400">{message.sender_name}</span>
+                  </div>
+                  
+                  {/* Message bubble */}
+                  <div
+                    className={`rounded-2xl px-3 py-2 ${
+                      isMine
+                        ? 'bg-indigo-600/80 text-white'
+                        : 'bg-white/10 text-slate-200 border border-white/20'
+                    }`}
+                  >
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                      {message.content}
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input */}
+      <div className="p-4 border-t border-white/20">
+        <form onSubmit={handleSend} className="flex gap-2">
+          <input
+            type="text"
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend(e);
+              }
+            }}
+            placeholder="Type a message..."
+            disabled={sending}
+            className="flex-1 px-3 py-2 bg-slate-900/60 backdrop-blur-xl border border-white/20 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 focus:outline-none disabled:opacity-50 text-sm"
+          />
+          <button
+            type="submit"
+            disabled={!newMessage.trim() || sending}
+            className="px-3 py-2 bg-gradient-to-r from-indigo-600 to-violet-700 text-white rounded-xl font-medium hover:from-indigo-700 hover:to-violet-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+          >
+            <Send className="w-4 h-4" />
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
