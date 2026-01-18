@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { generateInviteCode } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
+import { searchCities, getIataForCity, CityOption } from '@/lib/cityIataMap';
 
 export default function NewTripPage() {
   const router = useRouter();
@@ -16,11 +17,78 @@ export default function NewTripPage() {
   const [creatorProfile, setCreatorProfile] = useState<{ full_name?: string; avatar_url?: string | null } | null>(null);
   const [formData, setFormData] = useState({
     name: '',
+    originCity: '',
+    originIata: '',
     city: '',
     country: '',
+    destinationIata: '',
     startDate: '',
     endDate: '',
   });
+  
+  // Autocomplete state
+  const [originSuggestions, setOriginSuggestions] = useState<CityOption[]>([]);
+  const [showOriginSuggestions, setShowOriginSuggestions] = useState(false);
+  const [destSuggestions, setDestSuggestions] = useState<CityOption[]>([]);
+  const [showDestSuggestions, setShowDestSuggestions] = useState(false);
+  const [hasMounted, setHasMounted] = useState(false);
+  const originInputRef = useRef<HTMLInputElement>(null);
+  const destInputRef = useRef<HTMLInputElement>(null);
+
+  // Mount guard
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
+  // Handle origin city autocomplete
+  const handleOriginCityChange = (value: string) => {
+    setFormData({ ...formData, originCity: value });
+    if (value.length >= 2) {
+      const suggestions = searchCities(value);
+      setOriginSuggestions(suggestions);
+      setShowOriginSuggestions(true);
+      
+      // Auto-detect IATA if exact match
+      const iata = getIataForCity(value);
+      if (iata && !formData.originIata) {
+        setFormData(prev => ({ ...prev, originCity: value, originIata: iata }));
+      }
+    } else {
+      setShowOriginSuggestions(false);
+      setOriginSuggestions([]);
+    }
+  };
+
+  const handleOriginSelect = (city: CityOption) => {
+    setFormData({ ...formData, originCity: city.display.split(',')[0], originIata: city.iata });
+    setShowOriginSuggestions(false);
+    setOriginSuggestions([]);
+  };
+
+  // Handle destination city autocomplete
+  const handleDestCityChange = (value: string) => {
+    setFormData({ ...formData, city: value });
+    if (value.length >= 2) {
+      const suggestions = searchCities(value);
+      setDestSuggestions(suggestions);
+      setShowDestSuggestions(true);
+    } else {
+      setShowDestSuggestions(false);
+      setDestSuggestions([]);
+    }
+  };
+
+  const handleDestSelect = (city: CityOption) => {
+    const parts = city.display.split(',');
+    setFormData({ 
+      ...formData, 
+      city: parts[0].trim(), 
+      country: parts[1]?.trim() || '',
+      destinationIata: city.iata 
+    });
+    setShowDestSuggestions(false);
+    setDestSuggestions([]);
+  };
 
   // Prefill destination and dates from query params
   useEffect(() => {
@@ -118,8 +186,11 @@ export default function NewTripPage() {
         .insert({
           id: tripId,
           name: formData.name,
+          origin_city: formData.originCity,
+          origin_iata: formData.originIata.toUpperCase(),
           destination_city: formData.city,
           destination_country: formData.country,
+          destination_iata: formData.destinationIata || null,
           start_date: formData.startDate,
           end_date: formData.endDate,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -208,26 +279,125 @@ export default function NewTripPage() {
             </div>
 
             <div>
+              <label htmlFor="origin" className="block text-sm font-medium text-slate-400 mb-2">
+                Origin (Starting Point)
+              </label>
+              <div className="relative mb-4">
+                <div className="grid grid-cols-[1fr_auto] gap-4 items-start">
+                  <div className="relative">
+                    <input
+                      ref={originInputRef}
+                      type="text"
+                      id="originCity"
+                      required
+                      value={formData.originCity}
+                      onChange={(e) => handleOriginCityChange(e.target.value)}
+                      onFocus={() => {
+                        if (formData.originCity.length >= 2) {
+                          setShowOriginSuggestions(true);
+                        }
+                      }}
+                      onBlur={() => {
+                        // Delay to allow click on suggestion
+                        setTimeout(() => setShowOriginSuggestions(false), 200);
+                      }}
+                      className="w-full px-4 py-2 bg-zinc-900/50 border border-white/10 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400/20 focus:border-white/20"
+                      placeholder="Type city name (e.g., Lisbon)"
+                    />
+                    {showOriginSuggestions && originSuggestions.length > 0 && hasMounted && (
+                      <div className="absolute z-50 w-full mt-1 bg-slate-900/95 backdrop-blur-2xl border border-white/20 rounded-[2.5rem] shadow-xl overflow-hidden">
+                        {originSuggestions.map((city, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => handleOriginSelect(city)}
+                            className="w-full text-left px-4 py-3 hover:bg-white/10 transition-colors border-b border-white/5 last:border-0"
+                          >
+                            <div className="text-white font-medium">{city.display}</div>
+                            <div className="text-xs text-emerald-400 font-mono mt-1">{city.iata}</div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {hasMounted && formData.originIata && (
+                    <div className="flex items-center">
+                      <span className="px-3 py-2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-sm font-mono font-bold">
+                        {formData.originIata}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {!formData.originIata && (
+                  <input
+                    type="text"
+                    id="originIata"
+                    value={formData.originIata}
+                    onChange={(e) => setFormData({ ...formData, originIata: e.target.value.toUpperCase() })}
+                    className="mt-2 w-full px-4 py-2 bg-zinc-900/50 border border-white/10 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400/20 focus:border-white/20 font-mono text-sm"
+                    placeholder="Or enter IATA code manually (e.g., YOW)"
+                    maxLength={3}
+                  />
+                )}
+              </div>
+            </div>
+
+            <div>
               <label htmlFor="destination" className="block text-sm font-medium text-slate-400 mb-2">
                 Destination
               </label>
-              <div className="grid grid-cols-2 gap-4">
-                <input
-                  type="text"
-                  id="city"
-                  required
-                  value={formData.city}
-                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                  className="px-4 py-2 bg-zinc-900/50 border border-white/10 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400/20 focus:border-white/20"
-                  placeholder="City"
-                />
+              <div className="relative mb-4">
+                <div className="grid grid-cols-[1fr_auto] gap-4 items-start mb-2">
+                  <div className="relative">
+                    <input
+                      ref={destInputRef}
+                      type="text"
+                      id="city"
+                      required
+                      value={formData.city}
+                      onChange={(e) => handleDestCityChange(e.target.value)}
+                      onFocus={() => {
+                        if (formData.city.length >= 2) {
+                          setShowDestSuggestions(true);
+                        }
+                      }}
+                      onBlur={() => {
+                        setTimeout(() => setShowDestSuggestions(false), 200);
+                      }}
+                      className="w-full px-4 py-2 bg-zinc-900/50 border border-white/10 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400/20 focus:border-white/20"
+                      placeholder="Type city name (e.g., Tokyo)"
+                    />
+                    {showDestSuggestions && destSuggestions.length > 0 && hasMounted && (
+                      <div className="absolute z-50 w-full mt-1 bg-slate-900/95 backdrop-blur-2xl border border-white/20 rounded-[2.5rem] shadow-xl overflow-hidden">
+                        {destSuggestions.map((city, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => handleDestSelect(city)}
+                            className="w-full text-left px-4 py-3 hover:bg-white/10 transition-colors border-b border-white/5 last:border-0"
+                          >
+                            <div className="text-white font-medium">{city.display}</div>
+                            <div className="text-xs text-emerald-400 font-mono mt-1">{city.iata}</div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {hasMounted && formData.destinationIata && (
+                    <div className="flex items-center">
+                      <span className="px-3 py-2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-sm font-mono font-bold">
+                        {formData.destinationIata}
+                      </span>
+                    </div>
+                  )}
+                </div>
                 <input
                   type="text"
                   id="country"
                   required
                   value={formData.country}
                   onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                  className="px-4 py-2 bg-zinc-900/50 border border-white/10 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400/20 focus:border-white/20"
+                  className="w-full px-4 py-2 bg-zinc-900/50 border border-white/10 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400/20 focus:border-white/20"
                   placeholder="Country"
                 />
               </div>

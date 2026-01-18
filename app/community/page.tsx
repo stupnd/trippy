@@ -311,8 +311,8 @@ const getCityCode = (city: string): string => {
 
 // Generate route display (origin → destination) using IATA codes
 const getRouteDisplay = (trip: any): string => {
-  const originCode = trip.origin_airport || 'YOW';
-  const destCode = trip.destination_iata || getCityCode(trip.destination_city);
+  const originCode = trip.origin_iata || '???';
+  const destCode = trip.destination_iata || getCityCode(trip.destination_city) || '???';
   return `${originCode.toUpperCase().slice(0, 3)} → ${destCode.toUpperCase().slice(0, 3)}`;
 };
 
@@ -369,7 +369,7 @@ function TripCard({ trip, idx, user, isMember, request, onJoin }: any) {
           <h3 className="text-3xl font-black text-white mb-2 leading-tight tracking-tighter uppercase">{trip.name}</h3>
           {/* Route Chip with IATA Codes */}
           <span className="inline-block text-sm font-mono font-bold text-emerald-400 mb-2 tracking-widest border border-emerald-500/30 px-2 py-0.5 rounded-lg bg-emerald-500/10">
-            {trip.origin_airport || 'YOW'} → {trip.destination_iata || 'YTZ'}
+            {trip.origin_iata || '???'} → {trip.destination_iata || getCityCode(trip.destination_city) || '???'}
           </span>
           <p className="text-slate-300 font-medium mb-2 flex items-center gap-2">
             <span className="opacity-60 text-lg">📍</span> {trip.destination_city}, {trip.destination_country}
