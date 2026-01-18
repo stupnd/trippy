@@ -56,9 +56,11 @@ export default function ProfilePage() {
   const [hoveredAvatar, setHoveredAvatar] = useState(false);
   const [cameraMode, setCameraMode] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [countdown, setCountdown] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Magnetic hover for avatar
   const avatarX = useMotionValue(0);
@@ -81,6 +83,9 @@ export default function ProfilePage() {
     return () => {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
+      }
+      if (countdownTimerRef.current) {
+        clearInterval(countdownTimerRef.current);
       }
     };
   }, [stream]);
@@ -207,6 +212,11 @@ export default function ProfilePage() {
 
   // Stop camera stream
   const stopCamera = () => {
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+      setCountdown(0);
+    }
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
       setStream(null);
@@ -215,6 +225,24 @@ export default function ProfilePage() {
         videoRef.current.srcObject = null;
       }
     }
+  };
+
+  const startCountdown = () => {
+    if (countdownTimerRef.current || uploadingAvatar) return;
+    setCountdown(3);
+    countdownTimerRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          if (countdownTimerRef.current) {
+            clearInterval(countdownTimerRef.current);
+            countdownTimerRef.current = null;
+          }
+          capturePhoto();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
   };
 
   // Capture photo from camera
@@ -735,6 +763,13 @@ export default function ProfilePage() {
                           style={{ transform: 'scaleX(-1)' }} // Mirror effect for better UX
                         />
                         <canvas ref={canvasRef} className="hidden" />
+                        {countdown > 0 && (
+                          <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/40">
+                            <div className="text-6xl font-bold text-white drop-shadow-lg">
+                              {countdown}
+                            </div>
+                          </div>
+                        )}
                         {!stream && (
                           <div className="absolute inset-0 flex items-center justify-center text-slate-400 z-10">
                             <div className="text-center">
@@ -761,12 +796,12 @@ export default function ProfilePage() {
                         <motion.button
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
-                          onClick={capturePhoto}
-                          disabled={uploadingAvatar}
+                          onClick={startCountdown}
+                          disabled={uploadingAvatar || countdown > 0}
                           className="flex-1 px-6 py-3 bg-gradient-to-r from-indigo-600 to-violet-700 rounded-2xl text-white hover:from-indigo-700 hover:to-violet-800 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                         >
                           <Circle className="w-5 h-5 fill-white" />
-                          {uploadingAvatar ? 'Uploading...' : 'Capture'}
+                          {uploadingAvatar ? 'Uploading...' : countdown > 0 ? 'Get ready...' : 'Capture'}
                         </motion.button>
                       </div>
                     </div>
