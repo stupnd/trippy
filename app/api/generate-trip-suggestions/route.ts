@@ -4,10 +4,139 @@ import { supabase } from '@/lib/supabase';
 import { TripRow, UserPreferencesRow, TripMemberRow } from '@/lib/supabase';
 
 const geminiApiKey = process.env.GEMINI_API_KEY;
+const amadeusClientId = process.env.AMADEUS_CLIENT_ID;
+const amadeusClientSecret = process.env.AMADEUS_CLIENT_SECRET;
 
 if (!geminiApiKey) {
   console.warn('GEMINI_API_KEY is not set. Trip suggestions will not work.');
 }
+
+const fetchAmadeusToken = async () => {
+  if (!amadeusClientId || !amadeusClientSecret) {
+    return { error: 'Amadeus API keys are not configured', token: null };
+  }
+
+  const body = new URLSearchParams({
+    grant_type: 'client_credentials',
+    client_id: amadeusClientId,
+    client_secret: amadeusClientSecret,
+  });
+
+  const response = await fetch('https://test.api.amadeus.com/v1/security/oauth2/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Amadeus token error:', errorText);
+    return { error: 'Failed to authenticate with Amadeus', token: null };
+  }
+
+  const payload = await response.json();
+  return { error: null, token: payload.access_token as string };
+};
+
+const formatDuration = (duration: string) => {
+  if (!duration) return '0h 0m';
+  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
+  if (!match) return duration;
+  const hours = match[1] ? Number.parseInt(match[1], 10) : 0;
+  const minutes = match[2] ? Number.parseInt(match[2], 10) : 0;
+  return `${hours}h ${minutes}m`;
+};
+
+const resolveIataCode = async (token: string, keyword: string) => {
+  if (!keyword) return '';
+  const url = new URL('https://test.api.amadeus.com/v1/reference-data/locations');
+  url.searchParams.set('keyword', keyword);
+  url.searchParams.set('subType', 'AIRPORT,CITY');
+  url.searchParams.set('page[limit]', '1');
+
+  const response = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response.ok) {
+    return '';
+  }
+
+  const payload = await response.json();
+  const candidate = payload?.data?.[0]?.iataCode;
+  return typeof candidate === 'string' ? candidate : '';
+};
+
+const fetchAmadeusFlights = async ({
+  token,
+  origin,
+  destination,
+  departureDate,
+  returnDate,
+  travelers,
+}: {
+  token: string;
+  origin: string;
+  destination: string;
+  departureDate: string;
+  returnDate?: string | null;
+  travelers: number;
+}) => {
+  const url = new URL('https://test.api.amadeus.com/v2/shopping/flight-offers');
+  url.searchParams.set('originLocationCode', origin);
+  url.searchParams.set('destinationLocationCode', destination);
+  url.searchParams.set('departureDate', departureDate);
+  if (returnDate) {
+    url.searchParams.set('returnDate', returnDate);
+  }
+  url.searchParams.set('adults', String(Math.max(travelers, 1)));
+  url.searchParams.set('currencyCode', 'USD');
+  url.searchParams.set('max', '5');
+
+  const response = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Amadeus flight offers error:', errorText);
+    return [];
+  }
+
+  const payload = await response.json();
+  const offers = Array.isArray(payload?.data) ? payload.data : [];
+
+  return offers.map((offer: any, index: number) => {
+    const itinerary = offer.itineraries?.[0];
+    const segments = itinerary?.segments || [];
+    const firstSegment = segments[0];
+    const lastSegment = segments[segments.length - 1];
+    const layoverAirports = segments.slice(0, -1).map((segment: any) => segment.arrival?.iataCode).filter(Boolean);
+    const airlineCode = firstSegment?.carrierCode || offer.validatingAirlineCodes?.[0] || 'Airline';
+    const price = Number.parseFloat(offer?.price?.total || '0');
+    const googleFlightsQuery = `https://www.google.com/travel/flights?q=Flights%20from%20${origin}%20to%20${destination}%20on%20${departureDate}`;
+
+    return {
+      id: `flight-${index + 1}`,
+      airline: airlineCode,
+      departure: {
+        airport: firstSegment?.departure?.iataCode || origin,
+        time: firstSegment?.departure?.at ? firstSegment.departure.at.slice(11, 16) : '',
+        date: firstSegment?.departure?.at ? firstSegment.departure.at.slice(0, 10) : departureDate,
+      },
+      arrival: {
+        airport: lastSegment?.arrival?.iataCode || destination,
+        time: lastSegment?.arrival?.at ? lastSegment.arrival.at.slice(11, 16) : '',
+        date: lastSegment?.arrival?.at ? lastSegment.arrival.at.slice(0, 10) : departureDate,
+      },
+      duration: formatDuration(itinerary?.duration || ''),
+      price: Number.isFinite(price) ? Math.round(price) : 0,
+      layovers: Math.max(segments.length - 1, 0),
+      layoverAirports,
+      link: googleFlightsQuery,
+    };
+  });
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -192,7 +321,7 @@ export async function POST(request: NextRequest) {
     const rejectionNotes = rejection_context
       ? `\nRejection feedback (use this to improve new options):\n${rejection_context}`
       : '';
-    const prompt = `You are an expert travel coordinator. Based on the following group preferences for a trip to ${destination}, suggest 5 flights, 5 accommodations, and 10 activities.${rejectionNotes}
+    const prompt = `You are an expert travel coordinator. Based on the following group preferences for a trip to ${destination}, suggest 5 accommodations and 10 activities.${rejectionNotes}
 
 Trip Details:
 - Origin: ${(trip as any).origin_city || 'Not specified'} (${tripOrigin || 'Not specified'})
@@ -226,27 +355,6 @@ ${membersWithPreferences.map((m) => {
 Please provide suggestions in the following strict JSON format:
 
 {
-  "flights": [
-    {
-      "id": "flight-1",
-      "airline": "Airline Name",
-      "departure": {
-        "airport": "AIRPORT_CODE",
-        "time": "HH:MM",
-        "date": "YYYY-MM-DD"
-      },
-      "arrival": {
-        "airport": "AIRPORT_CODE",
-        "time": "HH:MM",
-        "date": "YYYY-MM-DD"
-      },
-      "duration": "Xh Ym",
-      "price": 999,
-      "layovers": 0,
-      "layoverAirports": [],
-      "link": "https://booking-url.com/flight-id"
-    }
-  ],
   "accommodations": [
     {
       "id": "accommodation-1",
@@ -274,14 +382,12 @@ Please provide suggestions in the following strict JSON format:
 
 Important: 
 - Return ONLY valid JSON, no markdown formatting, no code blocks.
-- Provide exactly 5 flights, 5 accommodations, and 10 activities.
+- Provide exactly 5 accommodations and 10 activities.
 - Use realistic data for prices, airports, and locations.
 - Consider the group's budget ranges and preferences.
-- For flights, ALL flights MUST depart from ${preferredOrigins[0]} (origin airport code) and arrive at the destination airport for ${destination}. The departure.airport field should be ${preferredOrigins[0]} and arrival.airport should be a valid airport code for ${destination}.
-- Prefer direct flights when possible, but include some with layovers if they're more affordable.
 - For accommodations, prioritize the preferred types but include variety.
 - For activities, focus on the interests mentioned but provide a diverse mix.
-- CRITICAL: Include a "link" field for each flight and accommodation with a realistic booking URL (e.g., airline booking page, hotel booking site, Airbnb listing). Use realistic URLs like "https://www.expedia.com/flight/...", "https://www.booking.com/hotel/...", or "https://www.airbnb.com/rooms/...".`;
+- CRITICAL: Include a "link" field for each accommodation with a realistic booking URL (e.g., "https://www.booking.com/hotel/...", or "https://www.airbnb.com/rooms/...").`;
 
     // Initialize Gemini - verify API key is valid
     if (!geminiApiKey || typeof geminiApiKey !== 'string') {
@@ -337,8 +443,6 @@ Important:
 
     // Validate structure
     if (
-      !suggestions.flights ||
-      !Array.isArray(suggestions.flights) ||
       !suggestions.accommodations ||
       !Array.isArray(suggestions.accommodations) ||
       !suggestions.activities ||
@@ -347,11 +451,36 @@ Important:
       return NextResponse.json(
         {
           error: 'Invalid response structure from AI',
-          message: 'Response missing required fields (flights, accommodations, activities)',
+          message: 'Response missing required fields (accommodations, activities)',
           suggestions,
         },
         { status: 500 }
       );
+    }
+
+    let flights: any[] = [];
+    if (amadeusClientId && amadeusClientSecret) {
+      const { error: tokenError, token } = await fetchAmadeusToken();
+      if (!tokenError && token) {
+        let originCode = preferredOrigins[0];
+        if (originCode && !/^[A-Z]{3}$/.test(originCode)) {
+          originCode = await resolveIataCode(token, originCode);
+        }
+        let destinationCode = (trip as any).destination_iata || '';
+        if (!destinationCode) {
+          destinationCode = await resolveIataCode(token, trip.destination_city || '');
+        }
+        if (originCode && destinationCode && trip.start_date && /^[A-Z]{3}$/.test(originCode) && /^[A-Z]{3}$/.test(destinationCode)) {
+          flights = await fetchAmadeusFlights({
+            token,
+            origin: originCode,
+            destination: destinationCode,
+            departureDate: trip.start_date,
+            returnDate: trip.end_date || null,
+            travelers: membersList.length || 1,
+          });
+        }
+      }
     }
 
     // Persist suggestions
@@ -360,7 +489,7 @@ Important:
       .upsert(
         {
           trip_id,
-          flights: suggestions.flights,
+          flights,
           accommodations: suggestions.accommodations,
           activities: suggestions.activities,
           generated_at: new Date().toISOString(),
@@ -382,7 +511,11 @@ Important:
       success: true,
       trip_id,
       model_used: 'gemini-2.0-flash',
-      suggestions,
+      suggestions: {
+        flights,
+        accommodations: suggestions.accommodations,
+        activities: suggestions.activities,
+      },
     });
   } catch (error: any) {
     // Catch any unexpected errors
