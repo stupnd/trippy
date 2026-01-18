@@ -1,18 +1,25 @@
 'use client';
 
-import { Moon, Sun } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useTheme } from './ThemeProvider';
 
-type ThemeToggleProps = {
-  isFloating?: boolean;
-  className?: string;
-};
+const Moon = dynamic(() => import('lucide-react').then(m => m.Moon), { ssr: false });
+const Sun = dynamic(() => import('lucide-react').then(m => m.Sun), { ssr: false });
 
-export default function ThemeToggle({ isFloating = true, className = '' }: ThemeToggleProps) {
+export default function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const isDark = theme === 'dark';
 
-  const positionClass = isFloating ? 'fixed top-4 right-4 z-50' : 'relative';
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Don't render until mounted to prevent hydration mismatch
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <button

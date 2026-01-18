@@ -86,6 +86,25 @@ export async function POST(request: NextRequest) {
     // Ensure members is an array (handle null/undefined)
     const membersList = members || [];
 
+    // Fetch profiles for all members
+    const memberUserIds = membersList.map((m: any) => m.user_id).filter(Boolean);
+    let profilesMap = new Map<string, { full_name?: string }>();
+    
+    if (memberUserIds.length > 0) {
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', memberUserIds);
+      
+      (profilesData || []).forEach(profile => {
+        if (profile.id) {
+          profilesMap.set(profile.id, {
+            full_name: profile.full_name || undefined,
+          });
+        }
+      });
+    }
+
     // Fetch user preferences - handle empty results (this is OK - some users may not have preferences yet)
     const { data: preferences, error: preferencesError } = await supabase
       .from('user_preferences')
@@ -104,12 +123,13 @@ export async function POST(request: NextRequest) {
     const preferencesList = preferences || [];
 
     // Prepare preference data for the prompt - handle empty preferences gracefully
-    const membersWithPreferences = membersList.map((member) => {
+    const membersWithPreferences = membersList.map((member: any) => {
       const memberPrefs = preferencesList.find(
         (p) => p.member_id === member.id
       );
+      const profile = member.user_id ? profilesMap.get(member.user_id) : null;
       return {
-        name: member.name || 'Unknown',
+        name: profile?.full_name || 'Traveler',
         preferences: memberPrefs || null,
       };
     });
@@ -159,8 +179,14 @@ export async function POST(request: NextRequest) {
 
     // Use trip destination as default if no preferences provided
     const destination = `${trip.destination_city || 'Unknown'}, ${trip.destination_country || 'Unknown'}`;
+    // Use trip origin_iata if available, otherwise fall back to user preferences
+    const tripOrigin = (trip as any).origin_iata || null;
     const preferredOrigins =
-      originAirports.length > 0 ? originAirports : ['Not specified'];
+      tripOrigin
+        ? [tripOrigin]
+        : originAirports.length > 0
+        ? originAirports
+        : ['Not specified'];
 
     // Construct the prompt for Gemini - handle missing trip data
     const rejectionNotes = rejection_context
@@ -169,13 +195,14 @@ export async function POST(request: NextRequest) {
     const prompt = `You are an expert travel coordinator. Based on the following group preferences for a trip to ${destination}, suggest 5 flights, 5 accommodations, and 10 activities.${rejectionNotes}
 
 Trip Details:
+- Origin: ${(trip as any).origin_city || 'Not specified'} (${tripOrigin || 'Not specified'})
 - Destination: ${destination}
 - Start Date: ${trip.start_date || 'Not specified'}
 - End Date: ${trip.end_date || 'Not specified'}
 - Number of Travelers: ${membersList.length || 1}
 
 Group Preferences Summary:
-- Preferred Origin Airports: ${preferredOrigins.join(', ') || 'Not specified'}
+- Origin Airport: ${preferredOrigins.join(', ') || 'Not specified'}${tripOrigin ? ' (from trip)' : originAirports.length > 0 ? ' (from preferences)' : ''}
 - Flight Flexibility: ${flightFlexibilities.join(', ') || 'medium'}
 - Budget Sensitivity: ${budgetSensitivities.join(', ') || 'medium'}
 - Accommodation Budget Range: $${accommodationBudgetMin}-$${accommodationBudgetMax} per night
@@ -250,7 +277,8 @@ Important:
 - Provide exactly 5 flights, 5 accommodations, and 10 activities.
 - Use realistic data for prices, airports, and locations.
 - Consider the group's budget ranges and preferences.
-- For flights, prefer direct flights when possible, but include some with layovers if they're more affordable.
+- For flights, ALL flights MUST depart from ${preferredOrigins[0]} (origin airport code) and arrive at the destination airport for ${destination}. The departure.airport field should be ${preferredOrigins[0]} and arrival.airport should be a valid airport code for ${destination}.
+- Prefer direct flights when possible, but include some with layovers if they're more affordable.
 - For accommodations, prioritize the preferred types but include variety.
 - For activities, focus on the interests mentioned but provide a diverse mix.
 - CRITICAL: Include a "link" field for each flight and accommodation with a realistic booking URL (e.g., airline booking page, hotel booking site, Airbnb listing). Use realistic URLs like "https://www.expedia.com/flight/...", "https://www.booking.com/hotel/...", or "https://www.airbnb.com/rooms/...".`;

@@ -13,7 +13,7 @@ export default function TripRequestsPage() {
   const tripId = params.id as string;
   const { user, loading: authLoading } = useAuth();
   const [trip, setTrip] = useState<TripRow | null>(null);
-  const [requests, setRequests] = useState<JoinRequestRow[]>([]);
+  const [requests, setRequests] = useState<(JoinRequestRow & { requester_name?: string; requester_avatar?: string | null })[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -55,7 +55,38 @@ export default function TripRequestsPage() {
         .order('created_at', { ascending: false });
 
       if (requestsError) throw requestsError;
-      setRequests((requestsData || []) as JoinRequestRow[]);
+      
+      // Fetch profiles for all requesters
+      const requesterIds = (requestsData || []).map(req => req.requester_id).filter(Boolean);
+      let profilesMap = new Map<string, { full_name?: string; avatar_url?: string | null }>();
+      
+      if (requesterIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, full_name, avatar_url')
+          .in('id', requesterIds);
+        
+        (profilesData || []).forEach(profile => {
+          if (profile.id) {
+            profilesMap.set(profile.id, {
+              full_name: profile.full_name || undefined,
+              avatar_url: profile.avatar_url || null,
+            });
+          }
+        });
+      }
+      
+      // Map the requests with profile names
+      const requestsWithNames = (requestsData || []).map((req: any) => {
+        const profile = profilesMap.get(req.requester_id);
+        return {
+          ...req,
+          requester_name: profile?.full_name || 'Traveler',
+          requester_avatar: profile?.avatar_url || null,
+        };
+      });
+      
+      setRequests(requestsWithNames as any);
     } catch (err: any) {
       console.error('Error fetching join requests:', err);
       setError(err.message || 'Failed to load requests');
@@ -73,7 +104,7 @@ export default function TripRequestsPage() {
             {
               trip_id: tripId,
               user_id: request.requester_id,
-              name: request.display_name,
+              name: '', // Placeholder - actual name comes from profiles.full_name
             },
             { onConflict: 'trip_id, user_id' }
           );
@@ -144,7 +175,7 @@ export default function TripRequestsPage() {
               <div key={request.id} className="glass-card p-6 rounded-2xl">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h3 className="text-lg font-semibold text-white">{request.display_name}</h3>
+                    <h3 className="text-lg font-semibold text-white">{(request as any).requester_name || 'Traveler'}</h3>
                     <p className="text-sm text-slate-400 mt-1">{request.message}</p>
                   </div>
                   <div className="text-xs text-slate-400">

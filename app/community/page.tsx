@@ -14,7 +14,6 @@ type JoinRequest = {
   id: string;
   trip_id: string;
   requester_id: string;
-  display_name: string;
   message: string;
   status: 'pending' | 'approved' | 'rejected';
 };
@@ -36,7 +35,7 @@ export default function CommunityPage() {
   const [requestTrip, setRequestTrip] = useState<TripRow | null>(null);
   const [requestSaving, setRequestSaving] = useState(false);
   const [requestError, setRequestError] = useState('');
-  const [requestForm, setRequestForm] = useState({ displayName: '', message: '' });
+  const [requestForm, setRequestForm] = useState({ message: '' });
 
   const statusLabel = (status?: string | null) => {
     const labels: Record<string, string> = {
@@ -132,7 +131,6 @@ export default function CommunityPage() {
     setRequestTrip(trip);
     setRequestError('');
     setRequestForm({
-      displayName: (user?.user_metadata?.full_name || user?.user_metadata?.name || ''),
       message: '',
     });
     setRequestOpen(true);
@@ -140,8 +138,8 @@ export default function CommunityPage() {
 
   const submitJoinRequest = async () => {
     if (!user || !requestTrip) return;
-    if (!requestForm.displayName.trim() || !requestForm.message.trim()) {
-      setRequestError('All fields are required.');
+    if (!requestForm.message.trim()) {
+      setRequestError('Message is required.');
       return;
     }
     setRequestSaving(true);
@@ -152,7 +150,6 @@ export default function CommunityPage() {
           id: uuidv4(),
           trip_id: requestTrip.id,
           requester_id: user.id,
-          display_name: requestForm.displayName.trim(),
           message: requestForm.message.trim(),
           status: 'pending',
         })
@@ -244,15 +241,6 @@ export default function CommunityPage() {
               
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-300 ml-1">Display Name</label>
-                <input
-                  type="text"
-                  value={requestForm.displayName}
-                    onChange={(e) => setRequestForm(p => ({ ...p, displayName: e.target.value }))}
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                />
-              </div>
-                <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-300 ml-1">Your Message</label>
                 <textarea
                     rows={4}
@@ -323,8 +311,8 @@ const getCityCode = (city: string): string => {
 
 // Generate route display (origin → destination) using IATA codes
 const getRouteDisplay = (trip: any): string => {
-  const originCode = trip.origin_airport || 'YOW';
-  const destCode = trip.destination_iata || getCityCode(trip.destination_city);
+  const originCode = trip.origin_iata || '???';
+  const destCode = trip.destination_iata || getCityCode(trip.destination_city) || '???';
   return `${originCode.toUpperCase().slice(0, 3)} → ${destCode.toUpperCase().slice(0, 3)}`;
 };
 
@@ -381,7 +369,7 @@ function TripCard({ trip, idx, user, isMember, request, onJoin }: any) {
           <h3 className="text-3xl font-black text-white mb-2 leading-tight tracking-tighter uppercase">{trip.name}</h3>
           {/* Route Chip with IATA Codes */}
           <span className="inline-block text-sm font-mono font-bold text-emerald-400 mb-2 tracking-widest border border-emerald-500/30 px-2 py-0.5 rounded-lg bg-emerald-500/10">
-            {trip.origin_airport || 'YOW'} → {trip.destination_iata || 'YTZ'}
+            {trip.origin_iata || '???'} → {trip.destination_iata || getCityCode(trip.destination_city) || '???'}
           </span>
           <p className="text-slate-300 font-medium mb-2 flex items-center gap-2">
             <span className="opacity-60 text-lg">📍</span> {trip.destination_city}, {trip.destination_country}
