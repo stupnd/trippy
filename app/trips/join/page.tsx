@@ -99,7 +99,7 @@ export default function JoinTripPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-slate-200">Loading...</div>
       </div>
     );

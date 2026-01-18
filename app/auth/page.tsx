@@ -68,7 +68,7 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center py-12 px-4">
+    <div className="min-h-screen flex items-center justify-center py-12 px-4">
       <div className="max-w-md w-full">
         <div className="card-surface rounded-lg shadow-xl p-8">
           <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-50 mb-2">Welcome to Trippy</h1>
