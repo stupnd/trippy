@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { v4 as uuidv4 } from 'uuid';
 import { ArrowLeft, Sparkles, Plane, Hotel, Target, Calendar, Check } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { motion } from 'framer-motion';
@@ -214,12 +215,14 @@ export default function SuggestionsPage() {
 
     const voteKey = `${optionType}_${optionId}`;
     const reason = approved ? null : (voteReasonDrafts[voteKey] || '').trim() || null;
+    const existingVote = (votes[voteKey] || []).find((vote) => vote.member_id === user.id);
 
     try {
       const { data, error: voteError } = await supabase
         .from('suggestion_votes')
         .upsert(
           {
+            id: existingVote?.id || uuidv4(),
             trip_id: tripId,
             member_id: user.id,
             option_type: optionType,
@@ -236,7 +239,18 @@ export default function SuggestionsPage() {
 
       const existing = votes[voteKey] || [];
       const updated = existing.filter((v) => v.member_id !== user.id);
-      if (data) updated.push(data as VoteRow);
+      const nextVote: VoteRow = data
+        ? (data as VoteRow)
+        : {
+            id: `${tripId}-${optionType}-${optionId}-${user.id}`,
+            trip_id: tripId,
+            member_id: user.id,
+            option_type: optionType,
+            option_id: optionId,
+            approved,
+            reason,
+          };
+      updated.push(nextVote);
       const nextVotes = { ...votes, [voteKey]: updated };
       setVotes(nextVotes);
       if (!approved) {
@@ -276,6 +290,7 @@ export default function SuggestionsPage() {
       }
     } catch (err) {
       console.error('Error saving vote:', err);
+      setError('Failed to save your vote. Please try again.');
     }
 
     // Voting pulse animation
@@ -635,12 +650,16 @@ export default function SuggestionsPage() {
 
                       {/* Reject Button - Ghost with border */}
                       <button
-                        onClick={() =>
-                          setShowReasonFor((prev) => ({
-                            ...prev,
-                            [voteKey]: true,
-                          }))
-                        }
+                        onClick={() => {
+                          if (userVote?.approved === false && userVote.reason) {
+                            handleVote('flight', flight.id, false);
+                          } else {
+                            setShowReasonFor((prev) => ({
+                              ...prev,
+                              [voteKey]: true,
+                            }));
+                          }
+                        }}
                         className={`px-6 py-3 rounded-2xl font-semibold transition-all border ${
                           userVote?.approved === false
                             ? 'bg-red-500/20 text-red-300 border-red-500/50'
@@ -784,12 +803,16 @@ export default function SuggestionsPage() {
                       ✓ Approve
                     </button>
                     <button
-                      onClick={() =>
-                        setShowReasonFor((prev) => ({
-                          ...prev,
-                          [voteKey]: true,
-                        }))
-                      }
+                      onClick={() => {
+                        if (userVote?.approved === false && userVote.reason) {
+                          handleVote('accommodation', accommodation.id, false);
+                        } else {
+                          setShowReasonFor((prev) => ({
+                            ...prev,
+                            [voteKey]: true,
+                          }));
+                        }
+                      }}
                       className={`flex-1 px-4 py-2 rounded-xl font-semibold transition-all glass-card-hover ${
                         userVote?.approved === false
                           ? 'bg-red-500/30 text-red-300 border border-red-500/50'
@@ -913,12 +936,16 @@ export default function SuggestionsPage() {
                         ✓ Approve
                       </button>
                       <button
-                      onClick={() =>
-                        setShowReasonFor((prev) => ({
-                          ...prev,
-                          [voteKey]: true,
-                        }))
-                      }
+                        onClick={() => {
+                          if (userVote?.approved === false && userVote.reason) {
+                            handleVote('activity', activity.id, false);
+                          } else {
+                            setShowReasonFor((prev) => ({
+                              ...prev,
+                              [voteKey]: true,
+                            }));
+                          }
+                        }}
                         className={`px-4 py-2 rounded-xl font-semibold transition-all glass-card-hover ${
                           userVote?.approved === false
                             ? 'bg-red-500/30 text-red-300 border border-red-500/50'
