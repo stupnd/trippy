@@ -8,6 +8,7 @@ import { LogOut, User, Settings, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import NotificationBadge from './NotificationBadge';
+import ThemeToggle from './ThemeToggle';
 
 export default function GlobalNavbar() {
   const pathname = usePathname();
@@ -114,36 +115,36 @@ export default function GlobalNavbar() {
   return (
     <nav className="sticky top-0 z-50 bg-slate-50/80 dark:bg-slate-900/60 backdrop-blur-xl border-b border-slate-200 dark:border-white/20">
       <div className="container mx-auto px-4 md:px-8 max-w-7xl">
-        <div className="flex items-center h-14 md:h-16 gap-8">
-          {/* Left: Logo */}
-          <Link
-            href="/"
-            id="trippy-logo"
-            className="relative flex items-center gap-2 group"
-            onMouseEnter={() => setLogoHover(true)}
-            onMouseLeave={() => setLogoHover(false)}
-          >
-            {logoHover && (
-              <motion.div
-                className="absolute inset-0 -z-10 blur-xl opacity-30 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full"
-                style={{
-                  x: glowX,
-                  y: glowY,
-                  width: '100px',
-                  height: '100px',
-                  left: '50%',
-                  top: '50%',
-                  marginLeft: '-50px',
-                  marginTop: '-50px',
-                }}
-              />
-            )}
-            <div className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-              Trippy
-            </div>
-          </Link>
+        <div className="flex items-center justify-between h-14 md:h-16">
+          <div className="flex items-center gap-8">
+            {/* Left: Logo */}
+            <Link
+              href="/"
+              id="trippy-logo"
+              className="relative flex items-center gap-2 group"
+              onMouseEnter={() => setLogoHover(true)}
+              onMouseLeave={() => setLogoHover(false)}
+            >
+              {logoHover && (
+                <motion.div
+                  className="absolute inset-0 -z-10 blur-xl opacity-30 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full"
+                  style={{
+                    x: glowX,
+                    y: glowY,
+                    width: '100px',
+                    height: '100px',
+                    left: '50%',
+                    top: '50%',
+                    marginLeft: '-50px',
+                    marginTop: '-50px',
+                  }}
+                />
+              )}
+              <div className="text-[1.85rem] font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                Trippy
+              </div>
+            </Link>
 
-          <div className="flex items-center gap-6">
             {/* Center: Navigation Links */}
             <div className="hidden md:flex items-center gap-8">
               <Link
@@ -177,7 +178,10 @@ export default function GlobalNavbar() {
                 Community
               </Link>
             </div>
+          </div>
 
+          <div className="flex items-center gap-3">
+            <ThemeToggle isFloating={false} />
             {/* Right: Profile Section */}
             {user ? (
               <div className="flex items-center gap-3">
