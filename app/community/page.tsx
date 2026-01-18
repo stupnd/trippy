@@ -359,7 +359,7 @@ function TripCard({ trip, idx, user, isMember, request, onJoin }: any) {
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: idx * 0.1 }}
-      className="group relative h-[28rem] rounded-[2.5rem] overflow-hidden border border-white/10 bg-slate-900/60 backdrop-blur-2xl hover:border-white/20 hover:scale-[1.02] transition-all"
+      className="group relative h-[28rem] rounded-[2.5rem] overflow-hidden border border-slate-200 bg-white/70 backdrop-blur-2xl hover:border-slate-300 hover:scale-[1.02] transition-all dark:border-white/10 dark:bg-slate-900/60 dark:hover:border-white/20"
     >
       {/* Background Image with Error Fallback */}
       <div className="absolute inset-0 z-0">
@@ -372,25 +372,25 @@ function TripCard({ trip, idx, user, isMember, request, onJoin }: any) {
             onError={() => setImageError(true)}
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-slate-900 to-indigo-950" />
+          <div className="w-full h-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-indigo-950" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-white/90 via-white/60 to-transparent dark:from-slate-950 dark:via-slate-950/60 dark:to-transparent" />
       </div>
 
       {/* Card Content */}
       <div className="relative h-full p-8 flex flex-col justify-end z-10">
         <div className="mb-auto flex justify-between items-start">
-          <span className="px-4 py-1.5 bg-white/10 backdrop-blur-md rounded-full text-xs font-bold text-white border border-white/10 tracking-widest uppercase">
+          <span className="px-4 py-1.5 bg-slate-100 rounded-full text-xs font-bold text-slate-700 border border-slate-200 tracking-widest uppercase dark:bg-white/10 dark:text-white dark:border-white/10">
             {trip.status || 'Planning'}
           </span>
           <div className="flex -space-x-3">
             {trip.members?.map((m: any, i: number) => (
-              <div key={i} className="w-8 h-8 rounded-full border-2 border-slate-900 overflow-hidden bg-indigo-500 flex items-center justify-center text-[10px] font-bold">
+              <div key={i} className="w-8 h-8 rounded-full border-2 border-white overflow-hidden bg-indigo-500 flex items-center justify-center text-[10px] font-bold dark:border-slate-900">
                 {m.avatar_url ? <img src={m.avatar_url} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : m.name[0]}
               </div>
             ))}
             {trip.memberCount > 5 && (
-              <div className="w-8 h-8 rounded-full border-2 border-slate-900 bg-slate-800 flex items-center justify-center text-[10px] font-bold text-slate-400">
+              <div className="w-8 h-8 rounded-full border-2 border-white bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600 dark:border-slate-900 dark:bg-slate-800 dark:text-slate-400">
                 +{trip.memberCount - 5}
               </div>
             )}
@@ -398,18 +398,18 @@ function TripCard({ trip, idx, user, isMember, request, onJoin }: any) {
         </div>
 
         <div>
-          <h3 className="text-3xl font-black text-white mb-2 leading-tight tracking-tighter uppercase">{trip.name}</h3>
+          <h3 className="text-3xl font-black text-slate-900 dark:text-white mb-2 leading-tight tracking-tighter uppercase">{trip.name}</h3>
           {/* Route Chip with IATA Codes */}
-          <span className="inline-block text-sm font-mono font-bold text-emerald-400 mb-2 tracking-widest border border-emerald-500/30 px-2 py-0.5 rounded-lg bg-emerald-500/10">
+          <span className="inline-block text-sm font-mono font-bold text-emerald-700 mb-2 tracking-widest border border-emerald-200 px-2 py-0.5 rounded-lg bg-emerald-100 dark:text-emerald-400 dark:border-emerald-500/30 dark:bg-emerald-500/10">
             {trip.origin_iata || '???'} → {trip.destination_iata || getCityCode(trip.destination_city) || '???'}
           </span>
-          <p className="text-slate-300 font-medium mb-2 flex items-center gap-2">
+          <p className="text-slate-600 dark:text-slate-300 font-medium mb-2 flex items-center gap-2">
             <span className="opacity-60 text-lg">📍</span> {trip.destination_city}, {trip.destination_country}
           </p>
 
           <div className="flex items-center gap-3">
             {isMember ? (
-              <Link href={`/trips/${trip.id}`} className="flex-1 py-4 bg-transparent border border-white/10 text-white rounded-2xl font-bold text-center hover:border-white/20 hover:bg-white/5 transition-all">
+              <Link href={`/trips/${trip.id}`} className="flex-1 py-4 bg-transparent border border-slate-200 text-slate-900 rounded-2xl font-bold text-center hover:border-slate-300 hover:bg-slate-100 transition-all dark:border-white/10 dark:text-white dark:hover:border-white/20 dark:hover:bg-white/5">
                 Open Trip
               </Link>
             ) : request?.status === 'pending' ? (
@@ -421,7 +421,7 @@ function TripCard({ trip, idx, user, isMember, request, onJoin }: any) {
                 Request Not Accepted
               </div>
             ) : (
-              <button onClick={onJoin} className="flex-1 py-4 bg-transparent border border-white/10 text-white rounded-2xl font-bold hover:border-white/20 hover:bg-white/5 transition-all">
+              <button onClick={onJoin} className="flex-1 py-4 bg-transparent border border-slate-200 text-slate-900 rounded-2xl font-bold hover:border-slate-300 hover:bg-slate-100 transition-all dark:border-white/10 dark:text-white dark:hover:border-white/20 dark:hover:bg-white/5">
                 Join Adventure
               </button>
             )}

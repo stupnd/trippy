@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import WorldMapFlashlight from './WorldMapFlashlight';
 import GlobalNavbar from './GlobalNavbar';
-import ThemeToggle from './ThemeToggle';
 import Breadcrumbs from './Breadcrumbs';
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
@@ -17,8 +16,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
       {/* Global Navbar */}
       <GlobalNavbar />
-
-      <ThemeToggle />
 
       {/* Main Content with Page Transition */}
       <AnimatePresence mode="wait">
