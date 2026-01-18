@@ -171,7 +171,7 @@ export default function NotificationBadge() {
         onClick={handleClick}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        className="relative p-2 rounded-full hover:bg-white/10 transition-colors"
+        className="relative p-2 rounded-full hover:bg-slate-100 transition-colors dark:hover:bg-white/10"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
       >
