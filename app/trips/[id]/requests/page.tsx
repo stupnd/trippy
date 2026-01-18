@@ -16,6 +16,7 @@ export default function TripRequestsPage() {
   const [requests, setRequests] = useState<(JoinRequestRow & { requester_name?: string; requester_avatar?: string | null })[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -96,34 +97,95 @@ export default function TripRequestsPage() {
   };
 
   const handleDecision = async (request: JoinRequestRow, nextStatus: 'approved' | 'rejected') => {
+    setError('');
+    
     try {
       if (nextStatus === 'approved') {
-        const { error: memberError } = await supabase
+        // Step 1: Insert the requester into trip_members (only user_id, no name/avatar)
+        // Profile data (full_name, avatar_url) will be fetched via join on the dashboard
+        const { data: memberData, error: memberError } = await supabase
           .from('trip_members')
           .upsert(
             {
               trip_id: tripId,
-              user_id: request.requester_id,
-              name: '', // Placeholder - actual name comes from profiles.full_name
+              user_id: request.requester_id, // Only store user_id - profile data comes from profiles table
             },
             { onConflict: 'trip_id, user_id' }
           );
-        if (memberError) throw memberError;
+
+        if (memberError) {
+          console.error('Error inserting into trip_members:', {
+            trip_id: tripId,
+            user_id: request.requester_id,
+            error: memberError,
+            code: memberError.code,
+            message: memberError.message,
+            details: memberError.details,
+            hint: memberError.hint,
+          });
+          throw new Error(`Failed to add member to trip: ${memberError.message}`);
+        }
+
+        console.log('Successfully added member to trip:', {
+          trip_id: tripId,
+          user_id: request.requester_id,
+          member_data: memberData,
+        });
       }
 
+      // Step 3: Update join_requests status
       const { error: updateError } = await supabase
         .from('join_requests')
         .update({ status: nextStatus })
         .eq('id', request.id);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Error updating join_requests status:', {
+          request_id: request.id,
+          new_status: nextStatus,
+          error: updateError,
+          code: updateError.code,
+          message: updateError.message,
+          details: updateError.details,
+          hint: updateError.hint,
+        });
+        throw new Error(`Failed to update request status: ${updateError.message}`);
+      }
 
-      setRequests((prev) =>
-        prev.map((req) => (req.id === request.id ? { ...req, status: nextStatus } : req))
-      );
+      console.log('Successfully updated join request:', {
+        request_id: request.id,
+        new_status: nextStatus,
+      });
+
+      // Step 4: Update UI - remove approved requests, keep rejected ones with updated status
+      if (nextStatus === 'approved') {
+        // Remove approved request from the list
+        setRequests((prev) => prev.filter((req) => req.id !== request.id));
+        // Show success message with purple/indigo aesthetic
+        const requesterName = (request as any).requester_name || 'Traveler';
+        setSuccessMessage(`${requesterName} has been added to the trip!`);
+        // Clear success message after 3 seconds
+        setTimeout(() => setSuccessMessage(''), 3000);
+      } else {
+        // Update rejected request status in the list
+        setRequests((prev) =>
+          prev.map((req) => (req.id === request.id ? { ...req, status: nextStatus } : req))
+        );
+      }
     } catch (err: any) {
-      console.error('Error updating request:', err);
-      setError(err.message || 'Failed to update request');
+      console.error('Error in handleDecision:', {
+        request_id: request.id,
+        requester_id: request.requester_id,
+        trip_id: tripId,
+        next_status: nextStatus,
+        error: err,
+        error_message: err.message,
+        error_code: err.code,
+        error_details: err.details,
+        error_hint: err.hint,
+        stack: err.stack,
+      });
+      setError(err.message || `Failed to ${nextStatus === 'approved' ? 'approve' : 'reject'} request`);
     }
   };
 
@@ -162,6 +224,20 @@ export default function TripRequestsPage() {
             Join Requests {trip ? `· ${trip.name}` : ''}
           </h1>
         </div>
+
+        {/* Success Message */}
+        {successMessage && (
+          <div className="mb-6 px-6 py-4 bg-indigo-500/20 border border-indigo-500/30 rounded-2xl text-indigo-300 font-medium">
+            {successMessage}
+          </div>
+        )}
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 px-6 py-4 bg-red-500/20 border border-red-500/30 rounded-2xl text-red-300 font-medium">
+            {error}
+          </div>
+        )}
 
         {requests.length === 0 && (
           <div className="glass-card p-6 text-slate-300">

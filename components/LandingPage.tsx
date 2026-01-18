@@ -69,7 +69,7 @@ export default function LandingPage() {
         className="relative h-screen flex items-center justify-center overflow-hidden pt-24"
       >
         {/* Atmospheric Background - covers everything */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-zinc-950 via-slate-900 to-black z-0" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-50 via-slate-100 to-slate-200 dark:from-zinc-950 dark:via-slate-900 dark:to-black z-0" />
 
         {/* Floating Clouds */}
         {[1, 2, 3, 4, 5].map((i) => (

@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { generateInviteCode } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
-import { searchCities, getIataForCity, CityOption } from '@/lib/cityIataMap';
+import { CityOption } from '@/lib/cityIataMap';
 
 export default function NewTripPage() {
   const router = useRouter();
@@ -15,9 +15,7 @@ export default function NewTripPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [creatorProfile, setCreatorProfile] = useState<{ full_name?: string; avatar_url?: string | null } | null>(null);
-  const [citySuggestions, setCitySuggestions] = useState<Array<{ city: string; country: string }>>([]);
   const [countrySuggestions, setCountrySuggestions] = useState<string[]>([]);
-  const [showCitySuggestions, setShowCitySuggestions] = useState(false);
   const [showCountrySuggestions, setShowCountrySuggestions] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -38,51 +36,125 @@ export default function NewTripPage() {
   const [hasMounted, setHasMounted] = useState(false);
   const originInputRef = useRef<HTMLInputElement>(null);
   const destInputRef = useRef<HTMLInputElement>(null);
+  const justSelectedOriginRef = useRef(false);
+  const justSelectedDestRef = useRef(false);
 
   // Mount guard
   useEffect(() => {
     setHasMounted(true);
   }, []);
 
-  // Handle origin city autocomplete
-  const handleOriginCityChange = (value: string) => {
-    setFormData({ ...formData, originCity: value });
-    if (value.length >= 2) {
-      const suggestions = searchCities(value);
-      setOriginSuggestions(suggestions);
-      setShowOriginSuggestions(true);
-      
-      // Auto-detect IATA if exact match
-      const iata = getIataForCity(value);
-      if (iata && !formData.originIata) {
-        setFormData(prev => ({ ...prev, originCity: value, originIata: iata }));
+  // Handle origin city autocomplete with Gemini API
+  useEffect(() => {
+    // Don't fetch if we just selected a suggestion
+    if (justSelectedOriginRef.current) {
+      justSelectedOriginRef.current = false;
+      return;
+    }
+
+    const query = formData.originCity.trim();
+    if (query.length < 2) {
+      setOriginSuggestions([]);
+      setShowOriginSuggestions(false);
+      return;
+    }
+
+    const timeout = setTimeout(async () => {
+      try {
+        console.log('🔍 Fetching origin city suggestions for:', query);
+        const response = await fetch(`/api/search-cities?q=${encodeURIComponent(query)}`);
+        if (!response.ok) {
+          console.error('❌ City search API error:', response.statusText);
+          return;
+        }
+        const data = await response.json();
+        console.log('✅ Origin suggestions received:', data.suggestions);
+        const suggestions: CityOption[] = (data.suggestions || []).map((s: any) => ({
+          city: s.city,
+          country: s.country,
+          iata: s.iata || '',
+          display: s.display || `${s.city}, ${s.country}`,
+        }));
+        console.log('📋 Mapped origin suggestions:', suggestions);
+        setOriginSuggestions(suggestions);
+        setShowOriginSuggestions(true);
+      } catch (fetchError) {
+        console.error('❌ City suggestions failed:', fetchError);
+        setOriginSuggestions([]);
       }
-    } else {
+    }, 150); // Debounce 150ms for faster response
+
+    return () => clearTimeout(timeout);
+  }, [formData.originCity]);
+
+  const handleOriginCityChange = (value: string) => {
+    setFormData({ ...formData, originCity: value, originIata: '' });
+    if (value.length < 2) {
       setShowOriginSuggestions(false);
       setOriginSuggestions([]);
     }
   };
 
   const handleOriginSelect = (city: CityOption) => {
+    justSelectedOriginRef.current = true; // Prevent useEffect from triggering
     setFormData({ ...formData, originCity: city.display.split(',')[0], originIata: city.iata });
     setShowOriginSuggestions(false);
     setOriginSuggestions([]);
   };
 
-  // Handle destination city autocomplete
+  // Handle destination city autocomplete with Gemini API
+  useEffect(() => {
+    // Don't fetch if we just selected a suggestion
+    if (justSelectedDestRef.current) {
+      justSelectedDestRef.current = false;
+      return;
+    }
+
+    const query = formData.city.trim();
+    if (query.length < 2) {
+      setDestSuggestions([]);
+      setShowDestSuggestions(false);
+      return;
+    }
+
+    const timeout = setTimeout(async () => {
+      try {
+        console.log('🔍 Fetching destination city suggestions for:', query);
+        const response = await fetch(`/api/search-cities?q=${encodeURIComponent(query)}`);
+        if (!response.ok) {
+          console.error('❌ City search API error:', response.statusText);
+          return;
+        }
+        const data = await response.json();
+        console.log('✅ Destination suggestions received:', data.suggestions);
+        const suggestions: CityOption[] = (data.suggestions || []).map((s: any) => ({
+          city: s.city,
+          country: s.country,
+          iata: s.iata || '',
+          display: s.display || `${s.city}, ${s.country}`,
+        }));
+        console.log('📋 Mapped destination suggestions:', suggestions);
+        setDestSuggestions(suggestions);
+        setShowDestSuggestions(true);
+      } catch (fetchError) {
+        console.error('❌ City suggestions failed:', fetchError);
+        setDestSuggestions([]);
+      }
+    }, 150); // Debounce 150ms for faster response
+
+    return () => clearTimeout(timeout);
+  }, [formData.city]);
+
   const handleDestCityChange = (value: string) => {
-    setFormData({ ...formData, city: value });
-    if (value.length >= 2) {
-      const suggestions = searchCities(value);
-      setDestSuggestions(suggestions);
-      setShowDestSuggestions(true);
-    } else {
+    setFormData({ ...formData, city: value, destinationIata: '' });
+    if (value.length < 2) {
       setShowDestSuggestions(false);
       setDestSuggestions([]);
     }
   };
 
   const handleDestSelect = (city: CityOption) => {
+    justSelectedDestRef.current = true; // Prevent useEffect from triggering
     const parts = city.display.split(',');
     setFormData({ 
       ...formData, 
@@ -93,58 +165,6 @@ export default function NewTripPage() {
     setShowDestSuggestions(false);
     setDestSuggestions([]);
   };
-
-  useEffect(() => {
-    const query = formData.city.trim();
-    if (query.length < 2) {
-      setCitySuggestions([]);
-      return;
-    }
-
-    const timeout = setTimeout(async () => {
-      try {
-        const url = `https://nominatim.openstreetmap.org/search?city=${encodeURIComponent(
-          query
-        )}&format=json&addressdetails=1&limit=8`;
-        const response = await fetch(url, {
-          headers: { 'Accept-Language': 'en' },
-        });
-        if (!response.ok) return;
-        const results = (await response.json()) as Array<{
-          address?: {
-            city?: string;
-            town?: string;
-            village?: string;
-            municipality?: string;
-            county?: string;
-            country?: string;
-          };
-        }>;
-        const next = new Map<string, { city: string; country: string }>();
-        results.forEach((item) => {
-          const address = item.address || {};
-          const city =
-            address.city ||
-            address.town ||
-            address.village ||
-            address.municipality ||
-            address.county ||
-            '';
-          const country = address.country || '';
-          if (!city || !country) return;
-          const key = `${city.toLowerCase()}-${country.toLowerCase()}`;
-          if (!next.has(key)) {
-            next.set(key, { city, country });
-          }
-        });
-        setCitySuggestions(Array.from(next.values()));
-      } catch (fetchError) {
-        console.error('City suggestions failed:', fetchError);
-      }
-    }, 250);
-
-    return () => clearTimeout(timeout);
-  }, [formData.city]);
 
   useEffect(() => {
     const query = formData.country.trim();
@@ -288,13 +308,12 @@ export default function NewTripPage() {
       }
 
       // Insert creator as trip member using auth.uid()
-      // Use creator's full_name from profile (or empty string as fallback)
+      // Profile data (full_name, avatar_url) will be fetched via join on the dashboard
       const { error: memberError } = await supabase
         .from('trip_members')
         .insert({
           trip_id: tripId,
-          user_id: user.id,
-          name: creatorProfile?.full_name || '', // Auto-filled from profiles.full_name
+          user_id: user.id, // Only store user_id - profile data comes from profiles table
         });
 
       if (memberError) {
@@ -365,7 +384,7 @@ export default function NewTripPage() {
             </div>
 
             <div>
-              <label htmlFor="origin" className="block text-sm font-medium text-slate-400 mb-2">
+              <label htmlFor="origin" className="block text-sm font-medium text-slate-700 dark:text-slate-400 mb-2">
                 Origin (Starting Point)
               </label>
               <div className="relative mb-4">
@@ -387,20 +406,20 @@ export default function NewTripPage() {
                         // Delay to allow click on suggestion
                         setTimeout(() => setShowOriginSuggestions(false), 200);
                       }}
-                      className="w-full px-4 py-2 bg-zinc-900/50 border border-white/10 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400/20 focus:border-white/20"
+                      className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-zinc-900/50 dark:border-white/10 dark:text-white dark:placeholder-slate-500 dark:focus:ring-slate-400/20 dark:focus:border-white/20"
                       placeholder="Type city name (e.g., Lisbon)"
                     />
                     {showOriginSuggestions && originSuggestions.length > 0 && hasMounted && (
-                      <div className="absolute z-50 w-full mt-1 bg-slate-900/95 backdrop-blur-2xl border border-white/20 rounded-[2.5rem] shadow-xl overflow-hidden">
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-[2.5rem] shadow-xl overflow-hidden dark:bg-slate-900/95 dark:backdrop-blur-2xl dark:border-white/20">
                         {originSuggestions.map((city, idx) => (
                           <button
                             key={idx}
                             type="button"
                             onClick={() => handleOriginSelect(city)}
-                            className="w-full text-left px-4 py-3 hover:bg-white/10 transition-colors border-b border-white/5 last:border-0"
+                            className="w-full text-left px-4 py-3 hover:bg-slate-100 transition-colors border-b border-slate-100 last:border-0 dark:hover:bg-white/10 dark:border-white/5"
                           >
-                            <div className="text-white font-medium">{city.display}</div>
-                            <div className="text-xs text-emerald-400 font-mono mt-1">{city.iata}</div>
+                            <div className="text-slate-900 font-medium dark:text-white">{city.display}</div>
+                            <div className="text-xs text-emerald-700 font-mono mt-1 dark:text-emerald-400">{city.iata}</div>
                           </button>
                         ))}
                       </div>
@@ -408,7 +427,7 @@ export default function NewTripPage() {
                   </div>
                   {hasMounted && formData.originIata && (
                     <div className="flex items-center">
-                      <span className="px-3 py-2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-sm font-mono font-bold">
+                      <span className="px-3 py-2 bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-sm font-mono font-bold dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30">
                         {formData.originIata}
                       </span>
                     </div>
@@ -420,7 +439,7 @@ export default function NewTripPage() {
                     id="originIata"
                     value={formData.originIata}
                     onChange={(e) => setFormData({ ...formData, originIata: e.target.value.toUpperCase() })}
-                    className="mt-2 w-full px-4 py-2 bg-zinc-900/50 border border-white/10 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400/20 focus:border-white/20 font-mono text-sm"
+                    className="mt-2 w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 font-mono text-sm dark:bg-zinc-900/50 dark:border-white/10 dark:text-white dark:placeholder-slate-500 dark:focus:ring-slate-400/20 dark:focus:border-white/20"
                     placeholder="Or enter IATA code manually (e.g., YOW)"
                     maxLength={3}
                   />
@@ -429,7 +448,7 @@ export default function NewTripPage() {
             </div>
 
             <div>
-              <label htmlFor="destination" className="block text-sm font-medium text-slate-400 mb-2">
+              <label htmlFor="destination" className="block text-sm font-medium text-slate-700 dark:text-slate-400 mb-2">
                 Destination
               </label>
               <div className="relative mb-4">
@@ -450,20 +469,20 @@ export default function NewTripPage() {
                       onBlur={() => {
                         setTimeout(() => setShowDestSuggestions(false), 200);
                       }}
-                      className="w-full px-4 py-2 bg-zinc-900/50 border border-white/10 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400/20 focus:border-white/20"
+                      className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-zinc-900/50 dark:border-white/10 dark:text-white dark:placeholder-slate-500 dark:focus:ring-slate-400/20 dark:focus:border-white/20"
                       placeholder="Type city name (e.g., Tokyo)"
                     />
                     {showDestSuggestions && destSuggestions.length > 0 && hasMounted && (
-                      <div className="absolute z-50 w-full mt-1 bg-slate-900/95 backdrop-blur-2xl border border-white/20 rounded-[2.5rem] shadow-xl overflow-hidden">
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-[2.5rem] shadow-xl overflow-hidden dark:bg-slate-900/95 dark:backdrop-blur-2xl dark:border-white/20">
                         {destSuggestions.map((city, idx) => (
                           <button
                             key={idx}
                             type="button"
                             onClick={() => handleDestSelect(city)}
-                            className="w-full text-left px-4 py-3 hover:bg-white/10 transition-colors border-b border-white/5 last:border-0"
+                            className="w-full text-left px-4 py-3 hover:bg-slate-100 transition-colors border-b border-slate-100 last:border-0 dark:hover:bg-white/10 dark:border-white/5"
                           >
-                            <div className="text-white font-medium">{city.display}</div>
-                            <div className="text-xs text-emerald-400 font-mono mt-1">{city.iata}</div>
+                            <div className="text-slate-900 font-medium dark:text-white">{city.display}</div>
+                            <div className="text-xs text-emerald-700 font-mono mt-1 dark:text-emerald-400">{city.iata}</div>
                           </button>
                         ))}
                       </div>
@@ -471,7 +490,7 @@ export default function NewTripPage() {
                   </div>
                   {hasMounted && formData.destinationIata && (
                     <div className="flex items-center">
-                      <span className="px-3 py-2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-sm font-mono font-bold">
+                      <span className="px-3 py-2 bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-sm font-mono font-bold dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30">
                         {formData.destinationIata}
                       </span>
                     </div>
@@ -483,7 +502,7 @@ export default function NewTripPage() {
                   required
                   value={formData.country}
                   onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                  className="w-full px-4 py-2 bg-zinc-900/50 border border-white/10 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400/20 focus:border-white/20"
+                  className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-zinc-900/50 dark:border-white/10 dark:text-white dark:placeholder-slate-500 dark:focus:ring-slate-400/20 dark:focus:border-white/20"
                   placeholder="Country"
                 />
               </div>
