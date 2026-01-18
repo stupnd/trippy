@@ -34,6 +34,16 @@ export default function TripDetailPage() {
   const [preferencesUpdatedAt, setPreferencesUpdatedAt] = useState<string | null>(null);
   const [budgetLoading, setBudgetLoading] = useState(false);
   const [budgetError, setBudgetError] = useState('');
+  const [editOpen, setEditOpen] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState('');
+  const [editForm, setEditForm] = useState({
+    name: '',
+    city: '',
+    country: '',
+    startDate: '',
+    endDate: '',
+  });
   const [error, setError] = useState('');
   const [membersDrawerOpen, setMembersDrawerOpen] = useState(false);
   const [drawerTab, setDrawerTab] = useState<'members' | 'chat'>('members');
@@ -74,6 +84,13 @@ export default function TripDetailPage() {
       }
 
       setTrip(tripData);
+      setEditForm({
+        name: tripData.name || '',
+        city: tripData.destination_city || '',
+        country: tripData.destination_country || '',
+        startDate: tripData.start_date || '',
+        endDate: tripData.end_date || '',
+      });
 
       const { data: membersData, error: membersError } = await supabase
         .from('trip_members')
@@ -384,6 +401,63 @@ export default function TripDetailPage() {
     }
   };
 
+  const handleEditTrip = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!trip) return;
+
+    if (!editForm.name.trim()) {
+      setEditError('Trip name is required.');
+      return;
+    }
+
+    if (!editForm.city.trim() || !editForm.country.trim()) {
+      setEditError('Destination city and country are required.');
+      return;
+    }
+
+    if (!editForm.startDate || !editForm.endDate) {
+      setEditError('Start and end dates are required.');
+      return;
+    }
+
+    if (editForm.endDate < editForm.startDate) {
+      setEditError('End date must be after the start date.');
+      return;
+    }
+
+    setEditSaving(true);
+    setEditError('');
+
+    try {
+      const { data, error: updateError } = await supabase
+        .from('trips')
+        .update({
+          name: editForm.name.trim(),
+          destination_city: editForm.city.trim(),
+          destination_country: editForm.country.trim(),
+          start_date: editForm.startDate,
+          end_date: editForm.endDate,
+        })
+        .eq('id', tripId)
+        .select('*')
+        .single();
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      setTrip(data);
+      setEditOpen(false);
+      await maybeUpdateSummary(true);
+      await maybeUpdateBudget(true);
+    } catch (updateError: any) {
+      console.error('Error updating trip:', updateError);
+      setEditError(updateError.message || 'Failed to update trip');
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   const handleDeleteTrip = async () => {
     if (!trip || !user || user.id !== trip.created_by) return;
     const confirmed = window.confirm(
@@ -556,6 +630,111 @@ export default function TripDetailPage() {
 
   return (
     <div className="min-h-screen">
+      <AnimatePresence>
+        {editOpen && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="glass-card w-full max-w-lg rounded-3xl p-6 border border-white/10"
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 20, opacity: 0 }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-white">Edit Trip</h2>
+                <button
+                  onClick={() => setEditOpen(false)}
+                  className="text-slate-300 hover:text-white"
+                  aria-label="Close"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <form onSubmit={handleEditTrip} className="space-y-4">
+                <div>
+                  <label className="block text-sm text-slate-300 mb-2">Trip Name</label>
+                  <input
+                    type="text"
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    className="w-full rounded-2xl bg-white/5 border border-white/10 px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm text-slate-300 mb-2">City</label>
+                    <input
+                      type="text"
+                      value={editForm.city}
+                      onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
+                      className="w-full rounded-2xl bg-white/5 border border-white/10 px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-slate-300 mb-2">Country</label>
+                    <input
+                      type="text"
+                      value={editForm.country}
+                      onChange={(e) => setEditForm({ ...editForm, country: e.target.value })}
+                      className="w-full rounded-2xl bg-white/5 border border-white/10 px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm text-slate-300 mb-2">Start Date</label>
+                    <input
+                      type="date"
+                      value={editForm.startDate}
+                      onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
+                      className="w-full rounded-2xl bg-white/5 border border-white/10 px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-slate-300 mb-2">End Date</label>
+                    <input
+                      type="date"
+                      value={editForm.endDate}
+                      onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })}
+                      className="w-full rounded-2xl bg-white/5 border border-white/10 px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+                </div>
+                {editError && (
+                  <div className="rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-red-200">
+                    {editError}
+                  </div>
+                )}
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditOpen(false)}
+                    className="flex-1 rounded-2xl border border-white/10 px-4 py-2 text-slate-200 hover:bg-white/5"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={editSaving}
+                    className="flex-1 rounded-2xl bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {editSaving ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Breadcrumb */}
       <div className="container mx-auto px-4 md:px-8 max-w-7xl pt-4 mb-4">
         <div className="flex items-center gap-2 text-sm text-slate-400">
@@ -603,6 +782,27 @@ export default function TripDetailPage() {
                 <Share2 className="w-4 h-4 opacity-70" />
                 <span className="hidden sm:inline">Share</span>
               </Link>
+              {isCreator && (
+                <button
+                  onClick={() => {
+                    if (trip) {
+                      setEditForm({
+                        name: trip.name || '',
+                        city: trip.destination_city || '',
+                        country: trip.destination_country || '',
+                        startDate: trip.start_date || '',
+                        endDate: trip.end_date || '',
+                      });
+                    }
+                    setEditError('');
+                    setEditOpen(true);
+                  }}
+                  className="px-4 py-2 rounded-xl font-medium text-slate-300 border border-white/20 hover:bg-white/10 hover:border-white/30 hover:text-white transition-all flex items-center gap-1.5 text-sm"
+                >
+                  <Settings className="w-4 h-4" />
+                  <span className="hidden sm:inline">Edit</span>
+                </button>
+              )}
               {isCreator && (
                 <button
                   onClick={handleDeleteTrip}
