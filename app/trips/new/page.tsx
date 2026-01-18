@@ -331,7 +331,7 @@ export default function NewTripPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-slate-700 dark:text-slate-300">Loading...</div>
       </div>
     );
@@ -342,7 +342,7 @@ export default function NewTripPage() {
   }
 
   return (
-    <div className="min-h-screen pb-12 bg-slate-50 dark:bg-slate-900">
+    <div className="min-h-screen pb-12">
       <div className="container mx-auto px-4 md:px-8 max-w-2xl">
         <div className="card-surface rounded-lg shadow-xl p-8">
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-10 tracking-tight">

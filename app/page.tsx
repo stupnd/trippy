@@ -432,7 +432,7 @@ export default function Home() {
   // Show loading skeleton while checking auth
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 py-8">
+      <div className="min-h-screen py-8">
         <div className="container mx-auto px-4 max-w-7xl">
           <div className="mb-6">
             <div className="h-10 bg-slate-200 dark:bg-slate-800 rounded-lg w-64 mb-4 animate-pulse"></div>
@@ -457,7 +457,7 @@ export default function Home() {
 
   // User Dashboard - show user's trips
   return (
-    <div className="min-h-screen pb-8 bg-slate-50 dark:bg-slate-900">
+    <div className="min-h-screen pb-8">
       <div className="container mx-auto px-4 md:px-8 max-w-7xl">
         {/* Header */}
         <div className="flex justify-between items-center mb-10">
@@ -598,12 +598,17 @@ export default function Home() {
           </motion.div>
         )}
 
-        {/* Trip Cards Grid */}
+        {/* Upcoming Trips Section */}
         {trips.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {trips.map((trip, index) => (
-              <TripCard key={trip.id} trip={trip} index={index} />
-            ))}
+          <div className="mt-12">
+            <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6 tracking-tighter">
+              Upcoming Trips
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {trips.map((trip, index) => (
+                <TripCard key={trip.id} trip={trip} index={index} />
+              ))}
+            </div>
           </div>
         )}
       </div>
