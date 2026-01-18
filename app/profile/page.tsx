@@ -142,14 +142,17 @@ export default function ProfilePage() {
         else if (totalTrips > 2) explorerLevel = 'Adventurer';
         else if (totalTrips > 0) explorerLevel = 'Explorer';
 
+        // Priority: name -> full_name -> email prefix
+        const displayName = profileData?.name || profileData?.full_name || user.email?.split('@')[0] || 'Traveler';
+        
         setProfile({
-          name: profileData?.full_name || user.email?.split('@')[0] || 'Traveler',
+          name: displayName,
           email: user.email || '',
           bio: profileData?.bio || '',
           avatar_url: profileData?.avatar_url || null,
         });
         setOriginalProfile({
-          name: profileData?.full_name || user.email?.split('@')[0] || 'Traveler',
+          name: displayName,
           email: user.email || '',
           bio: profileData?.bio || '',
           avatar_url: profileData?.avatar_url || null,
@@ -462,7 +465,7 @@ export default function ProfilePage() {
         .from('profiles')
         .upsert({
           id: user.id,
-          [field === 'name' ? 'full_name' : field]: value,
+          [field === 'name' ? 'name' : field]: value,
           email: profile.email, // Keep email
         }, { onConflict: 'id' });
 
