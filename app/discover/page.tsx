@@ -167,7 +167,6 @@ export default function DiscoverPage() {
         spread: 60,
         origin: { x: e.clientX / window.innerWidth, y: e.clientY / window.innerHeight },
         colors: ['#ef4444', '#f97316', '#fbbf24'],
-        shapes: ['heart'],
       });
     }
 
@@ -417,45 +416,23 @@ export default function DiscoverPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: index * 0.1 }}
-                whileHover={{ scale: 1.05 }}
-                className={`relative group rounded-3xl overflow-hidden cursor-pointer ${getCardHeight(dest.height)} bg-white/5 backdrop-blur-2xl`}
-                style={{
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                }}
+                whileHover={{ scale: 1.02 }}
+                className={`relative group rounded-[2.5rem] overflow-hidden cursor-pointer ${getCardHeight(dest.height)} bg-slate-900/60 backdrop-blur-2xl border border-white/10 hover:border-white/20 transition-all`}
               >
-                {/* Shimmer Border Effect */}
-                <div className="absolute inset-0 rounded-3xl overflow-hidden">
-                  <motion.div
-                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                    style={{
-                      background: 'linear-gradient(90deg, transparent, rgba(168, 85, 247, 0.4), transparent)',
-                      backgroundSize: '200% 100%',
-                    }}
-                    animate={{
-                      backgroundPosition: ['200% 0', '-200% 0'],
-                    }}
-                    transition={{
-                      duration: 3,
-                      repeat: Infinity,
-                      ease: 'linear',
-                    }}
-                  />
-                </div>
-
                 {/* Destination Image */}
                 <div
-                  className="absolute inset-[1px] rounded-3xl bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
+                  className="absolute inset-0 rounded-[2.5rem] bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
                   style={{ backgroundImage: `url(${dest.image})` }}
                 />
 
                 {/* Soft Black Gradient Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent rounded-3xl" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent rounded-[2.5rem]" />
                 
                 {/* Content */}
                 <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
-                      <h3 className="text-2xl font-bold text-white mb-1">{dest.name}</h3>
+                      <h3 className="text-2xl font-black text-white mb-1 tracking-tighter">{dest.name}</h3>
                       <p className="text-slate-300 text-sm">{dest.country}</p>
                     </div>
                     <motion.button
@@ -476,20 +453,12 @@ export default function DiscoverPage() {
                   <p className="text-slate-200 text-sm mb-4 line-clamp-2">{dest.description}</p>
                   <Link
                     href={`/trips/new?destination=${encodeURIComponent(`${dest.name}, ${dest.country}`)}`}
-                    className="inline-block px-6 py-3 bg-gradient-to-r from-indigo-600 to-violet-700 text-white rounded-xl font-semibold hover:from-indigo-700 hover:to-violet-800 transition-all text-sm shadow-lg shadow-indigo-600/30"
+                    className="inline-block px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold hover:from-indigo-700 hover:to-purple-700 transition-all text-sm shadow-lg shadow-indigo-500/20"
                     onClick={(e) => e.stopPropagation()}
                   >
                     Start Planning →
                   </Link>
                 </div>
-
-                {/* Purple Glow on Hover */}
-                <motion.div
-                  className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                  style={{
-                    boxShadow: '0 20px 50px rgba(79, 70, 229, 0.3)',
-                  }}
-                />
               </motion.div>
             ))}
           </div>

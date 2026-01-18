@@ -505,7 +505,7 @@ export default function SuggestionsPage() {
               onClick={() => setActiveTab(tab.id)}
               className={`px-6 py-3 font-semibold rounded-t-2xl transition-all relative ${
                 activeTab === tab.id
-                  ? 'text-white bg-slate-900/60 border-b-2 border-blue-500'
+                  ? 'text-white bg-slate-900/60 border-b-2 border-cyan-400'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
               }`}
             >

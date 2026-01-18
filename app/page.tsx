@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
@@ -14,6 +15,163 @@ interface UserTrip extends TripRow {
   joined_at: string;
   member_name: string;
   member_id: string;
+  members?: Array<{ id: string; user_id: string | null; name: string; avatar_url: string | null }>;
+  memberCount?: number;
+}
+
+// Dynamic destination image URL using Unsplash - using curated photo IDs for reliability
+const destinationImageMap: Record<string, string> = {
+  // Common destinations with known good Unsplash photo IDs
+  'tokyo,japan': 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800&h=600&fit=crop',
+  'paris,france': 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&h=600&fit=crop',
+  'lisbon,portugal': 'https://images.unsplash.com/photo-1555881403-671f0b4c6413?w=800&h=600&fit=crop',
+  'london,uk': 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=800&h=600&fit=crop',
+  'london,united kingdom': 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=800&h=600&fit=crop',
+  'bali,indonesia': 'https://images.unsplash.com/photo-1518548419970-58e3b4079ab2?w=800&h=600&fit=crop',
+  'rome,italy': 'https://images.unsplash.com/photo-1515542622106-78bda8ba0e5b?w=800&h=600&fit=crop',
+  'barcelona,spain': 'https://images.unsplash.com/photo-1539037116277-4db20889f2d4?w=800&h=600&fit=crop',
+  'sydney,australia': 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop',
+  'dubai,uae': 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800&h=600&fit=crop',
+  'singapore,singapore': 'https://images.unsplash.com/photo-1525625293386-3f8f99389edd?w=800&h=600&fit=crop',
+  'amsterdam,netherlands': 'https://images.unsplash.com/photo-1534351590666-13e3e96b5017?w=800&h=600&fit=crop',
+  'berlin,germany': 'https://images.unsplash.com/photo-1587330979470-1b499a31bb34?w=800&h=600&fit=crop',
+  'new york,usa': 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=800&h=600&fit=crop',
+  'new york city,usa': 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=800&h=600&fit=crop',
+  'san francisco,usa': 'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=800&h=600&fit=crop',
+  'los angeles,usa': 'https://images.unsplash.com/photo-1534190239940-9ba8944ea261?w=800&h=600&fit=crop',
+  'miami,usa': 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop',
+  'seoul,south korea': 'https://images.unsplash.com/photo-1517154421773-0529f29ea451?w=800&h=600&fit=crop',
+  'hong kong,china': 'https://images.unsplash.com/photo-1508009603885-50cf7c579365?w=800&h=600&fit=crop',
+  'istanbul,turkey': 'https://images.unsplash.com/photo-1524231757912-21f4fe3a7200?w=800&h=600&fit=crop',
+  'prague,czech republic': 'https://images.unsplash.com/photo-1541849546-216549ae216d?w=800&h=600&fit=crop',
+  'vienna,austria': 'https://images.unsplash.com/photo-1516550893923-42d28e5677af?w=800&h=600&fit=crop',
+  'budapest,hungary': 'https://images.unsplash.com/photo-1546422904-90eab23c3d7e?w=800&h=600&fit=crop',
+};
+
+const getDestinationImageUrl = (city: string, country: string): string => {
+  const key = `${city.toLowerCase()},${country.toLowerCase()}`;
+  // Use mapped image if available, otherwise fallback to default Paris image
+  return destinationImageMap[key] || 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=800&q=80';
+};
+
+// Generate airport code from city name (simple placeholder - first 3 letters)
+const getCityCode = (city: string): string => {
+  if (!city) return '???';
+  const cleaned = city.replace(/[^a-zA-Z]/g, '').toUpperCase();
+  return cleaned.slice(0, 3).padEnd(3, '?');
+};
+
+// TripCard component with image error handling
+function TripCard({ trip, index }: { trip: UserTrip; index: number }) {
+  const destinationImage = `https://source.unsplash.com/800x600/?${encodeURIComponent(trip.destination_city)},travel`;
+  const memberAvatars = (trip.members || []).slice(0, 5);
+  const [imageError, setImageError] = useState(false);
+
+  return (
+    <motion.div
+      key={trip.id}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: index * 0.1 }}
+      className="group relative rounded-[2.5rem] overflow-hidden bg-slate-900/60 backdrop-blur-2xl border border-white/10 hover:border-white/20 hover:scale-[1.02] hover:shadow-lg hover:shadow-cyan-500/10 transition-all"
+    >
+      {/* Dimmed Background Image with Error Fallback */}
+      <div className="absolute inset-0 z-0">
+        {!imageError ? (
+          <img
+            src={destinationImage}
+            alt={`${trip.destination_city}, ${trip.destination_country}`}
+            className="w-full h-full object-cover opacity-30 group-hover:opacity-40 transition-opacity duration-700"
+            referrerPolicy="no-referrer"
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-slate-900 to-indigo-950" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-900/60 to-slate-900/40" />
+      </div>
+
+      {/* Card Content */}
+      <div className="relative p-6 flex flex-col min-h-[280px] z-10">
+        {/* Status Badge */}
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-xs bg-blue-500/20 text-blue-400 px-3 py-1.5 rounded-full border border-blue-500/40 font-medium">
+            {format(new Date(trip.start_date), 'MMM d')} - {format(new Date(trip.end_date), 'MMM d')}
+          </span>
+          {trip.memberCount && trip.memberCount > 0 && (
+            <span className="text-xs bg-emerald-500/20 text-emerald-300 px-3 py-1.5 rounded-full border border-emerald-500/30 font-medium">
+              {trip.memberCount} {trip.memberCount === 1 ? 'Member' : 'Members'}
+            </span>
+          )}
+        </div>
+
+        {/* Trip Title & Location */}
+        <h3 className="text-2xl font-black text-white mb-2 tracking-tighter line-clamp-2">
+          {trip.name}
+        </h3>
+        {/* Route Chip with IATA Codes */}
+        <span className="inline-block text-sm font-mono font-bold text-emerald-400 mb-2 tracking-widest border border-emerald-500/30 px-2 py-0.5 rounded-lg bg-emerald-500/10">
+          {(trip as any).origin_airport || 'YOW'} → {(trip as any).destination_iata || 'YTZ'}
+        </span>
+        <p className="text-slate-300 text-sm mb-2">
+          {trip.destination_city}, {trip.destination_country}
+        </p>
+
+        {/* Member Facepile */}
+        {memberAvatars.length > 0 && (
+          <div className="flex items-center gap-2 mb-6 -space-x-2">
+            {memberAvatars.map((member, idx) => {
+              const initials = member.name
+                .split(' ')
+                .map(n => n[0])
+                .join('')
+                .toUpperCase()
+                .slice(0, 2);
+              const colors = [
+                'bg-slate-600', 'bg-zinc-700', 'bg-neutral-700', 'bg-slate-700',
+                'bg-zinc-600', 'bg-slate-800', 'bg-neutral-800', 'bg-zinc-800'
+              ];
+              const colorClass = colors[idx % colors.length];
+
+              return (
+                <div
+                  key={member.id}
+                  className="relative w-10 h-10 rounded-full border-2 border-slate-950 overflow-hidden"
+                  style={{ zIndex: 10 - idx }}
+                >
+                  {member.avatar_url ? (
+                    <img
+                      src={member.avatar_url}
+                      alt={member.name}
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className={`w-full h-full ${colorClass} flex items-center justify-center text-white font-bold text-xs`}>
+                      {initials}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {trip.memberCount && trip.memberCount > 5 && (
+              <span className="text-xs text-slate-400 ml-2">+{trip.memberCount - 5}</span>
+            )}
+          </div>
+        )}
+
+        {/* Action Button */}
+        <div className="mt-auto">
+          <Link
+            href={`/trips/${trip.id}`}
+            className="inline-flex items-center justify-center w-full px-4 py-3 rounded-xl font-semibold text-white transition-all bg-transparent border border-white/10 hover:border-white/20 hover:bg-white/5"
+          >
+            View Trip →
+          </Link>
+        </div>
+      </div>
+    </motion.div>
+  );
 }
 
 export default function Home() {
@@ -63,23 +221,52 @@ export default function Home() {
 
       if (tripsError) throw tripsError;
 
-      // Combine trip data with membership data
-      const userTrips: UserTrip[] = (tripsData || []).map((trip) => {
-        const membership = memberships.find((m) => m.trip_id === trip.id);
-        return {
-          ...trip,
-          joined_at: membership?.joined_at || '',
-          member_name: membership?.name || '',
-          member_id: membership?.id || '',
-        };
-      });
+      // Fetch members for each trip to get facepile data
+      const tripsWithMembers = await Promise.all(
+        (tripsData || []).map(async (trip) => {
+          const { data: tripMembers } = await supabase
+            .from('trip_members')
+            .select('id, user_id, name')
+            .eq('trip_id', trip.id)
+            .limit(5);
+
+          const memberIds = (tripMembers || []).filter(m => m.user_id).map(m => m.user_id!);
+          const profileMap = new Map<string, string | null>();
+          
+          if (memberIds.length > 0) {
+            const { data: profiles } = await supabase
+              .from('profiles')
+              .select('id, avatar_url')
+              .in('id', memberIds);
+
+            (profiles || []).forEach(p => {
+              profileMap.set(p.id, p.avatar_url);
+            });
+          }
+
+          const membersWithAvatars = (tripMembers || []).map(m => ({
+            ...m,
+            avatar_url: m.user_id ? profileMap.get(m.user_id) || null : null,
+          }));
+
+          const membership = memberships.find((m) => m.trip_id === trip.id);
+          return {
+            ...trip,
+            joined_at: membership?.joined_at || '',
+            member_name: membership?.name || '',
+            member_id: membership?.id || '',
+            members: membersWithAvatars,
+            memberCount: membersWithAvatars.length,
+          };
+        })
+      );
 
       // Sort by most recently joined
-      userTrips.sort((a, b) => 
+      tripsWithMembers.sort((a, b) => 
         new Date(b.joined_at).getTime() - new Date(a.joined_at).getTime()
       );
 
-      setTrips(userTrips);
+      setTrips(tripsWithMembers);
     } catch (error: any) {
       console.error('Error fetching user trips:', error);
       setError('Failed to load your trips');
@@ -170,7 +357,7 @@ export default function Home() {
             </Link>
             <Link
               href="/trips/new"
-              className="bg-sky-200 text-slate-900 px-6 py-3 rounded-xl font-semibold hover:bg-sky-300 transition-all shadow-lg dark:bg-gradient-to-r dark:from-indigo-600 dark:to-violet-700 dark:text-white dark:hover:from-indigo-700 dark:hover:to-violet-800 dark:shadow-violet-600/40"
+              className="bg-gradient-to-r from-slate-800 to-slate-900 text-white px-6 py-3 rounded-xl font-semibold hover:from-slate-700 hover:to-slate-800 transition-all border border-white/20 shadow-black/40"
             >
               + Create New Trip
             </Link>
@@ -226,7 +413,7 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
                 href="/trips/new"
-                className="bg-sky-200 text-slate-900 px-8 py-4 rounded-2xl font-semibold text-lg hover:bg-sky-300 transition-all shadow-xl dark:bg-gradient-to-r dark:from-indigo-600 dark:to-violet-700 dark:text-white dark:hover:from-indigo-700 dark:hover:to-violet-800 dark:shadow-violet-600/40 dark:hover:shadow-violet-600/50"
+                className="bg-gradient-to-r from-slate-800 to-slate-900 text-white px-8 py-4 rounded-2xl font-semibold text-lg hover:from-slate-700 hover:to-slate-800 transition-all border border-white/20 shadow-black/40"
               >
                 ✨ Create Your First Trip
               </Link>
@@ -243,41 +430,8 @@ export default function Home() {
         {/* Trip Cards Grid */}
         {trips.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {trips.map((trip) => (
-              <div
-                key={trip.id}
-                className="card-surface rounded-lg p-6 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-              >
-                <div className="mb-4">
-                  <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-50 mb-2">
-                    {trip.name}
-                  </h3>
-                  <p className="text-slate-700 dark:text-slate-300 text-sm">
-                    {trip.destination_city}, {trip.destination_country}
-                  </p>
-                </div>
-
-                <div className="mb-4 space-y-2 text-sm text-slate-600 dark:text-slate-400">
-                  <div className="flex items-center gap-2">
-                    <span>📅</span>
-                    <span>
-                      {format(new Date(trip.start_date), 'MMM d')} -{' '}
-                      {format(new Date(trip.end_date), 'MMM d, yyyy')}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span>👤</span>
-                    <span>Joined as: {trip.member_name}</span>
-                  </div>
-                </div>
-
-                <Link
-                  href={`/trips/${trip.id}`}
-                  className="block w-full bg-sky-200 text-slate-900 text-center px-4 py-3 rounded-xl font-semibold hover:bg-sky-300 transition-all shadow-lg dark:bg-gradient-to-r dark:from-indigo-600 dark:to-violet-700 dark:text-white dark:hover:from-indigo-700 dark:hover:to-violet-800 dark:shadow-violet-600/40"
-                >
-                  View Trip →
-                </Link>
-              </div>
+            {trips.map((trip, index) => (
+              <TripCard key={trip.id} trip={trip} index={index} />
             ))}
           </div>
         )}

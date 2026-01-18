@@ -69,7 +69,7 @@ export default function LandingPage() {
         className="relative h-screen flex items-center justify-center overflow-hidden pt-24"
       >
         {/* Atmospheric Background - covers everything */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900 via-slate-900 to-black z-0" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-zinc-950 via-slate-900 to-black z-0" />
 
         {/* Floating Clouds */}
         {[1, 2, 3, 4, 5].map((i) => (
@@ -189,7 +189,7 @@ export default function LandingPage() {
           >
             <Link
               href="/auth"
-              className="inline-block px-12 py-6 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white text-xl font-bold rounded-3xl shadow-2xl shadow-purple-600/50 hover:shadow-purple-600/70 transition-all hover:scale-105 relative overflow-hidden group"
+              className="inline-block px-12 py-6 bg-gradient-to-r from-slate-800 to-slate-900 text-white text-xl font-bold rounded-3xl border border-white/20 shadow-black/40 hover:scale-105 transition-all relative overflow-hidden group"
             >
               <motion.div
                 className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
@@ -264,7 +264,7 @@ export default function LandingPage() {
             <h2 className="text-5xl md:text-6xl font-black text-white mb-4 tracking-tighter">
               Everything you need
               <br />
-              <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+              <span className="text-white">
                 in one place
               </span>
             </h2>
