@@ -13,6 +13,7 @@ import LandingPage from '@/components/LandingPage';
 interface UserTrip extends TripRow {
   joined_at: string;
   member_name: string;
+  member_id: string;
 }
 
 export default function Home() {
@@ -21,6 +22,7 @@ export default function Home() {
   const [trips, setTrips] = useState<UserTrip[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [unreadByTrip, setUnreadByTrip] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (authLoading) return;
@@ -40,7 +42,7 @@ export default function Home() {
       // Fetch trip memberships for current user
       const { data: memberships, error: membersError } = await supabase
         .from('trip_members')
-        .select('trip_id, joined_at, name')
+        .select('id, trip_id, joined_at, name')
         .eq('user_id', user!.id) // Use user_id column, not id
         .order('joined_at', { ascending: false });
 
@@ -68,6 +70,7 @@ export default function Home() {
           ...trip,
           joined_at: membership?.joined_at || '',
           member_name: membership?.name || '',
+          member_id: membership?.id || '',
         };
       });
 
@@ -84,6 +87,41 @@ export default function Home() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!user || trips.length === 0) return;
+
+    const channels = trips
+      .filter((trip) => trip.member_id)
+      .map((trip) => {
+        const channel = supabase
+          .channel(`home_unread_${trip.id}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'messages',
+              filter: `trip_id=eq.${trip.id}`,
+            },
+            (payload) => {
+              const newMsg = payload.new as any;
+              if (newMsg.member_id !== trip.member_id) {
+                setUnreadByTrip((prev) => ({
+                  ...prev,
+                  [trip.id]: (prev[trip.id] || 0) + 1,
+                }));
+              }
+            }
+          )
+          .subscribe();
+        return channel;
+      });
+
+    return () => {
+      channels.forEach((channel) => supabase.removeChannel(channel));
+    };
+  }, [user, trips]);
 
   // Show loading skeleton while checking auth
   if (authLoading || loading) {
@@ -142,6 +180,31 @@ export default function Home() {
         {error && (
           <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded-lg mb-6">
             {error}
+          </div>
+        )}
+
+        {trips.length > 0 && (
+          <div className="mb-6 space-y-3">
+            {trips
+              .filter((trip) => (unreadByTrip[trip.id] || 0) > 0)
+              .map((trip) => (
+                <button
+                  key={trip.id}
+                  type="button"
+                  onClick={() => {
+                    setUnreadByTrip((prev) => ({ ...prev, [trip.id]: 0 }));
+                    router.push(`/trips/${trip.id}?chat=1`);
+                  }}
+                  className="w-full bg-sky-200 text-slate-900 px-4 py-3 rounded-xl flex items-center justify-between hover:bg-sky-300 transition-all dark:bg-white/10 dark:text-slate-100 dark:hover:bg-white/20"
+                >
+                  <span className="text-sm">
+                    New chat message{(unreadByTrip[trip.id] || 0) > 1 ? 's' : ''} in {trip.name}
+                  </span>
+                  <span className="text-xs font-semibold bg-slate-900 text-white px-2 py-1 rounded-full dark:bg-white dark:text-slate-900">
+                    Open chat
+                  </span>
+                </button>
+              ))}
           </div>
         )}
 
