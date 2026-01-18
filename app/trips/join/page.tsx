@@ -111,10 +111,10 @@ export default function JoinTripPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 py-12 px-4">
-      <div className="max-w-md mx-auto">
+    <div className="min-h-screen pb-12">
+      <div className="container mx-auto px-4 md:px-8 max-w-md">
         <div className="card-surface rounded-lg shadow-xl p-8">
-          <h1 className="text-3xl font-bold text-slate-50 mb-6">
+          <h1 className="text-3xl font-bold text-white mb-10 tracking-tight">
             Join a Trip
           </h1>
 

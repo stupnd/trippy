@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Plane, Hotel, Target, Calendar, Settings, Sparkles, Share2, Trash2, LogOut, Users, Circle, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -453,7 +454,7 @@ export default function TripDetailPage() {
 
   if (authLoading || memberLoading || loading) {
     return (
-      <div className="min-h-screen py-8">
+      <div className="min-h-screen pb-8">
         <div className="container mx-auto px-4 max-w-7xl">
           <div className="mb-6">
             <div className="h-12 bg-white/5 rounded-3xl w-64 mb-4 shimmer-loader"></div>
@@ -476,7 +477,7 @@ export default function TripDetailPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-slate-50 mb-4">
+          <h1 className="text-2xl font-bold text-white mb-4 tracking-tight">
             {error || 'Trip not found'}
           </h1>
           <Link href="/" className="text-blue-400 hover:underline">
@@ -494,63 +495,71 @@ export default function TripDetailPage() {
 
   return (
     <div className="min-h-screen">
-      {/* Header */}
-      <div className="glass-card border-b border-white/10 mb-8">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex justify-between items-center">
-            <div className="flex-1">
-              <Link
-                href="/"
-                className="text-blue-400 hover:text-blue-300 mb-2 inline-flex items-center gap-2 text-sm transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Back to My Trips
-              </Link>
-              <div className="flex flex-wrap items-center gap-3 mb-1">
-                <h1 className="text-4xl font-bold text-slate-50">{trip.name}</h1>
-                <div className="px-3 py-1 rounded-full glass-card text-slate-200 text-sm border border-white/10">
-                  {budgetLoading ? (
-                    <span>Budget: calculating...</span>
-                  ) : trip.budget_min != null && trip.budget_max != null ? (
-                    <span>Budget: ${trip.budget_min} - ${trip.budget_max}</span>
-                  ) : (
-                    <span>Budget: not set</span>
-                  )}
-                </div>
-              </div>
-              <p className="text-slate-300">
-                {trip.destination_city}, {trip.destination_country}
-              </p>
-              {budgetError && (
-                <p className="text-xs text-red-300 mt-2">{budgetError}</p>
+      {/* Breadcrumb */}
+      <div className="container mx-auto px-4 md:px-8 max-w-7xl pt-4 mb-4">
+        <div className="flex items-center gap-2 text-sm text-slate-400">
+          <Link href="/" className="hover:text-slate-200 transition-colors">
+            My Trips
+          </Link>
+          <span>›</span>
+          <span className="text-slate-300">{trip.name}</span>
+        </div>
+      </div>
+
+      {/* Header - Transparent Section */}
+      <div className="container mx-auto px-4 md:px-8 max-w-7xl pb-10">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+          {/* Left Side: Title & Location */}
+          <div className="flex-1 min-w-0">
+            <h1 className="text-5xl font-bold text-white tracking-tight mb-2 truncate">{trip.name}</h1>
+            <p className="text-slate-400 truncate">
+              {trip.destination_city}, {trip.destination_country}
+            </p>
+            {budgetError && (
+              <p className="text-xs text-red-300 mt-2">{budgetError}</p>
+            )}
+          </div>
+
+          {/* Right Side: Badge & Action Buttons */}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            {/* Budget Badge */}
+            <div className="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-slate-200 text-xs whitespace-nowrap">
+              {budgetLoading ? (
+                <span>Budget: calculating...</span>
+              ) : trip.budget_min != null && trip.budget_max != null ? (
+                <span>Budget: ${trip.budget_min} - ${trip.budget_max}</span>
+              ) : (
+                <span>Budget: not set</span>
               )}
             </div>
-            <div className="flex gap-3 items-center">
+
+            {/* Action Buttons */}
+            <div className="flex gap-2 items-center">
               <Link
                 href={`/trips/${tripId}/share`}
-                className="glass-card px-4 py-2 rounded-xl font-semibold text-slate-200 hover:bg-white/10 transition-all glass-card-hover flex items-center gap-2"
+                className="px-4 py-2 rounded-xl font-medium text-slate-300 border border-white/20 hover:bg-white/10 hover:border-white/30 hover:text-white transition-all flex items-center gap-1.5 text-sm"
               >
                 <Share2 className="w-4 h-4 opacity-70" />
-                Share
+                <span className="hidden sm:inline">Share</span>
               </Link>
               {isCreator && (
                 <button
                   onClick={handleDeleteTrip}
                   disabled={deleting}
-                  className="glass-card px-4 py-2 rounded-xl font-semibold text-red-300 hover:bg-red-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-4 py-2 rounded-xl font-medium text-red-300 border border-red-500/30 hover:bg-red-500/20 hover:border-red-500/50 hover:text-red-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 text-sm"
                 >
                   <Trash2 className="w-4 h-4" />
-                  {deleting ? 'Deleting...' : 'Delete'}
+                  <span className="hidden sm:inline">{deleting ? 'Deleting...' : 'Delete'}</span>
                 </button>
               )}
               {!isCreator && (
                 <button
                   onClick={handleLeaveTrip}
                   disabled={leaving}
-                  className="glass-card px-4 py-2 rounded-xl font-semibold text-slate-200 hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-4 py-2 rounded-xl font-medium text-slate-300 border border-white/20 hover:bg-white/10 hover:border-white/30 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 text-sm"
                 >
                   <LogOut className="w-4 h-4" />
-                  {leaving ? 'Leaving...' : 'Leave'}
+                  <span className="hidden sm:inline">{leaving ? 'Leaving...' : 'Leave'}</span>
                 </button>
               )}
             </div>
@@ -558,7 +567,7 @@ export default function TripDetailPage() {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
+      <div className="container mx-auto px-4 md:px-8 max-w-7xl">
         {error && (
           <div className="glass-card border-red-500/50 bg-red-500/10 text-red-200 px-4 py-3 rounded-3xl mb-6">
             {error}
@@ -620,7 +629,7 @@ export default function TripDetailPage() {
           >
             <div className="flex items-center gap-3 mb-4">
               <Users className="w-6 h-6 text-blue-400 opacity-80" />
-              <h2 className="text-xl font-semibold text-slate-50">
+              <h2 className="text-xl font-semibold text-white tracking-tight">
                 Trip Members ({members.length})
               </h2>
               <div className="flex items-center gap-2 ml-auto">
@@ -688,7 +697,7 @@ export default function TripDetailPage() {
             className="glass-card p-6 glass-card-hover"
           >
             <Settings className="w-8 h-8 text-purple-400 opacity-80 mb-3" />
-            <h3 className="text-lg font-semibold mb-2 text-slate-50">
+            <h3 className="text-lg font-semibold mb-2 text-white tracking-tight">
               Set Preferences
             </h3>
             <p className="text-slate-300 text-sm">
@@ -702,7 +711,7 @@ export default function TripDetailPage() {
             className="glass-card p-6 glass-card-hover bg-gradient-to-br from-purple-500/10 to-blue-500/10 border-purple-500/20"
           >
             <Sparkles className="w-8 h-8 text-purple-400 opacity-80 mb-3" />
-            <h3 className="text-lg font-semibold mb-2 text-slate-50">
+            <h3 className="text-lg font-semibold mb-2 text-white tracking-tight">
               AI Suggestions
             </h3>
             <p className="text-slate-300 text-sm">
@@ -711,35 +720,94 @@ export default function TripDetailPage() {
           </Link>
         </div>
 
-        {/* Trip Summary */}
-        <div className="card-surface rounded-lg p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-slate-50">Trip Summary</h2>
+        {/* Trip Summary - Concierge Perspective */}
+        <div className="glass-card rounded-3xl p-6 mb-6 relative">
+          <div className="flex items-start justify-between mb-4">
+            <h2 className="text-xl font-semibold text-white tracking-tight">Trip Summary</h2>
             <button
               onClick={() => maybeUpdateSummary(true)}
               disabled={summaryLoading}
-              className="px-4 py-2 text-sm bg-slate-700 text-slate-200 rounded-lg hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title={summaryLoading ? 'Updating...' : 'Refresh Summary'}
             >
-              {summaryLoading ? 'Updating...' : 'Refresh Summary'}
+              <motion.div
+                animate={summaryLoading ? { rotate: 360 } : {}}
+                transition={{ duration: 1, repeat: summaryLoading ? Infinity : 0, ease: 'linear' }}
+              >
+                <Settings className="w-4 h-4" />
+              </motion.div>
             </button>
           </div>
           {summaryError && (
-            <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded-lg mb-4">
+            <div className="bg-red-500/10 border border-red-500/30 text-red-200 px-4 py-3 rounded-xl mb-4 text-sm">
               {summaryError}
             </div>
           )}
           {summaryLoading && !trip.summary && (
-            <div className="text-slate-300">Generating summary...</div>
+            <div className="flex items-center gap-2 text-slate-300 text-sm">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full"
+              />
+              Generating summary...
+            </div>
           )}
           {!summaryLoading && trip.summary && (
-            <p className="text-slate-300 leading-relaxed whitespace-pre-line">
-              {trip.summary}
-            </p>
+            <div className="space-y-3">
+              {(() => {
+                // Parse summary into bullet points (simple extraction)
+                const lines = trip.summary.split('\n').filter(l => l.trim());
+                const bullets = lines
+                  .map(line => {
+                    const clean = line.trim().replace(/^[•\-\*]\s*/, '');
+                    if (clean.length < 20) return null;
+                    
+                    // Extract icon patterns
+                    if (clean.toLowerCase().includes('destination') || clean.toLowerCase().includes('location')) {
+                      return { icon: '📍', text: clean.replace(/.*?destination:?\s*/i, '').trim() || clean };
+                    } else if (clean.toLowerCase().includes('traveler') || clean.toLowerCase().includes('member') || clean.toLowerCase().includes('people')) {
+                      return { icon: '👥', text: clean };
+                    } else if (clean.toLowerCase().includes('date') || clean.toLowerCase().includes('duration') || clean.toLowerCase().includes('when')) {
+                      return { icon: '📅', text: clean };
+                    } else if (clean.toLowerCase().includes('budget') || clean.toLowerCase().includes('cost')) {
+                      return { icon: '💰', text: clean };
+                    } else {
+                      return { icon: '✨', text: clean };
+                    }
+                  })
+                  .filter(Boolean)
+                  .slice(0, 4); // Limit to 4 bullets
+                
+                return bullets.length > 0 ? bullets : [
+                  { icon: '📍', text: `${trip.destination_city}, ${trip.destination_country}` },
+                  { icon: '👥', text: `${members.length} Travelers` },
+                  { icon: '📅', text: `${format(new Date(trip.start_date), 'MMM d')} - ${format(new Date(trip.end_date), 'MMM d, yyyy')}` },
+                  { icon: '💰', text: trip.budget_min && trip.budget_max ? `Budget: $${trip.budget_min} - $${trip.budget_max}` : 'Budget: Flexible' }
+                ];
+              })().map((item: any, idx: number) => (
+                <div key={idx} className="flex items-start gap-3 text-slate-300 text-sm">
+                  <span className="text-lg flex-shrink-0">{item.icon}</span>
+                  <span className="flex-1 leading-relaxed">{item.text}</span>
+                </div>
+              ))}
+            </div>
           )}
           {!summaryLoading && !trip.summary && !summaryError && (
-            <p className="text-slate-400">
-              Summary will appear here once generated.
-            </p>
+            <div className="space-y-3 text-slate-400 text-sm">
+              <div className="flex items-start gap-3">
+                <span className="text-lg flex-shrink-0">📍</span>
+                <span className="flex-1">{trip.destination_city}, {trip.destination_country}</span>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="text-lg flex-shrink-0">👥</span>
+                <span className="flex-1">{members.length} Travelers</span>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="text-lg flex-shrink-0">📅</span>
+                <span className="flex-1">{format(new Date(trip.start_date), 'MMM d')} - {format(new Date(trip.end_date), 'MMM d, yyyy')}</span>
+              </div>
+            </div>
           )}
         </div>
 
@@ -769,7 +837,7 @@ export default function TripDetailPage() {
 
         {/* Invite Card */}
         <div className="glass-card p-6">
-          <h3 className="text-xl font-semibold mb-4 text-slate-50 flex items-center gap-2">
+          <h3 className="text-xl font-semibold mb-4 text-white flex items-center gap-2 tracking-tight">
             <Share2 className="w-5 h-5 text-blue-400 opacity-80" />
             Invite Friends
           </h3>
@@ -779,7 +847,7 @@ export default function TripDetailPage() {
                 type="text"
                 readOnly
                 value={trip.invite_code}
-                className="flex-1 px-4 py-3 border border-white/20 rounded-2xl bg-white/5 font-mono text-sm font-bold text-center text-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                      className="flex-1 px-4 py-3 border border-white/20 rounded-2xl bg-slate-900/60 backdrop-blur-xl font-mono text-sm font-bold text-center text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
               />
               <button
                 onClick={() => {
@@ -828,14 +896,14 @@ export default function TripDetailPage() {
                 damping: 30,
                 stiffness: 300,
               }}
-              className="fixed top-0 right-0 h-full w-full max-w-md bg-white/10 backdrop-blur-xl border-l border-white/20 z-50 shadow-2xl"
+              className="fixed top-0 right-0 h-full w-full max-w-md bg-slate-900/80 backdrop-blur-xl border-l border-white/20 z-50 shadow-2xl"
             >
             <div className="h-full flex flex-col">
               {/* Header */}
-              <div className="flex items-center justify-between p-6 border-b border-white/10">
+              <div className="flex items-center justify-between p-6 border-b border-white/20">
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-50">Trip Members</h2>
-                  <p className="text-sm text-slate-400 mt-1">{members.length} members</p>
+                  <h2 className="text-2xl font-bold text-white tracking-tight">Trip Members</h2>
+                  <p className="text-sm text-slate-300 mt-1">{members.length} members</p>
                 </div>
                 <button
                   onClick={() => setMembersDrawerOpen(false)}
@@ -864,7 +932,7 @@ export default function TripDetailPage() {
                   return (
                     <div
                       key={member.id}
-                      className="glass-card p-4 rounded-2xl flex items-center gap-4 border-white/10"
+                      className="glass-card p-4 rounded-2xl flex items-center gap-4 border-white/20"
                     >
                       {/* Avatar */}
                       <div className="relative">
@@ -898,7 +966,7 @@ export default function TripDetailPage() {
 
                       {/* Member Info */}
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-semibold text-slate-50 truncate">{member.name}</h3>
+                        <h3 className="text-lg font-semibold text-white truncate">{member.name}</h3>
                         <div className="flex items-center gap-2 mt-1">
                           {member.hasPreferences ? (
                             <span className="text-xs bg-green-500/20 text-green-300 px-3 py-1 rounded-full border border-green-500/30 font-medium">
@@ -923,7 +991,7 @@ export default function TripDetailPage() {
               </div>
 
               {/* Footer - Invite Link */}
-              <div className="p-6 border-t border-white/10">
+              <div className="p-6 border-t border-white/20">
                 <div className="glass-card p-4 rounded-2xl">
                   <h3 className="text-sm font-semibold text-slate-300 mb-3">Invite Code</h3>
                   <div className="flex gap-2">
@@ -931,7 +999,7 @@ export default function TripDetailPage() {
                       type="text"
                       readOnly
                       value={trip.invite_code}
-                      className="flex-1 px-3 py-2 border border-white/20 rounded-xl bg-white/5 font-mono text-sm font-bold text-center text-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                      className="flex-1 px-3 py-2 border border-white/20 rounded-xl bg-slate-900/60 backdrop-blur-xl font-mono text-sm font-bold text-center text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                     />
                     <button
                       onClick={() => {

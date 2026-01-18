@@ -324,7 +324,7 @@ export default function SuggestionsPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen py-8">
+      <div className="min-h-screen pb-8">
         <div className="container mx-auto px-4 max-w-7xl">
           <div className="h-12 bg-white/5 rounded-3xl w-64 mb-8 shimmer-loader"></div>
           <div className="grid grid-cols-3 gap-4 mb-8">
@@ -343,7 +343,7 @@ export default function SuggestionsPage() {
   // Empty state - no suggestions yet
   if (!suggestions && !generating) {
     return (
-      <div className="min-h-screen bg-slate-900 py-8">
+      <div className="min-h-screen pb-8">
         <div className="container mx-auto px-4 max-w-7xl">
           <Link href={`/trips/${tripId}`} className="text-blue-400 hover:text-blue-300 mb-4 inline-flex items-center gap-2 transition-colors">
             <ArrowLeft className="w-4 h-4" />
@@ -352,7 +352,7 @@ export default function SuggestionsPage() {
 
           <div className="glass-card p-16 text-center">
             <Sparkles className="w-16 h-16 text-purple-400 mx-auto mb-6 opacity-80" />
-            <h1 className="text-4xl font-bold text-slate-50 mb-4">Generate Group Recommendations</h1>
+            <h1 className="text-4xl font-bold text-white mb-10 tracking-tight">Generate Group Recommendations</h1>
             <p className="text-slate-300 mb-8 max-w-2xl mx-auto">
               Get AI-powered suggestions for flights, accommodations, and activities based on your group's preferences
             </p>
@@ -414,14 +414,24 @@ export default function SuggestionsPage() {
   }) : null;
 
   return (
-    <div className="min-h-screen py-8">
-      <div className="container mx-auto px-4 max-w-7xl">
-        <Link href={`/trips/${tripId}`} className="text-blue-400 hover:text-blue-300 mb-4 inline-flex items-center gap-2 transition-colors">
-          <ArrowLeft className="w-4 h-4" />
-          Back to Trip
-        </Link>
+    <div className="min-h-screen pb-8">
+      {/* Breadcrumb */}
+      <div className="container mx-auto px-4 md:px-8 max-w-7xl mb-4">
+        <div className="flex items-center gap-2 text-sm text-slate-400">
+          <Link href="/" className="hover:text-slate-200 transition-colors">
+            My Trips
+          </Link>
+          <span>›</span>
+          <Link href={`/trips/${tripId}`} className="hover:text-slate-200 transition-colors">
+            Trip
+          </Link>
+          <span>›</span>
+          <span className="text-slate-300">Suggestions</span>
+        </div>
+      </div>
 
-        <h1 className="text-4xl font-bold text-slate-50 mb-8">Trip Suggestions</h1>
+      <div className="container mx-auto px-4 md:px-8 max-w-7xl">
+        <h1 className="text-4xl font-bold text-white mb-10 tracking-tight">Trip Suggestions</h1>
 
         {/* Tabs */}
         <div className="flex gap-2 mb-8 border-b border-white/10">
@@ -431,7 +441,7 @@ export default function SuggestionsPage() {
               onClick={() => setActiveTab(tab.id)}
               className={`px-6 py-3 font-semibold rounded-t-2xl transition-all relative ${
                 activeTab === tab.id
-                  ? 'text-slate-50 bg-white/10 border-b-2 border-blue-500'
+                  ? 'text-white bg-slate-900/60 border-b-2 border-blue-500'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
               }`}
             >
@@ -478,7 +488,7 @@ export default function SuggestionsPage() {
                   transition={{ duration: 0.4, delay: index * 0.1 }}
                   onMouseEnter={() => setHoveredFlightId(flight.id)}
                   onMouseLeave={() => setHoveredFlightId(null)}
-                  className={`glass-edge bg-white/5 backdrop-blur-xl rounded-3xl p-6 glass-card-hover ${
+                  className={`glass-edge glass-card rounded-3xl p-6 glass-card-hover ${
                     isApproved ? 'golden-state' : ''
                   } ${hasPulse ? 'voting-pulse' : ''}`}
                 >
@@ -487,12 +497,12 @@ export default function SuggestionsPage() {
                     {/* Origin -> Destination in single line */}
                     <div className="flex-1 flex items-center gap-4">
                       <div className="flex items-center gap-2">
-                        <div className="text-2xl font-bold text-slate-50">{flight.departure.airport}</div>
+                        <div className="text-2xl font-bold text-white">{flight.departure.airport}</div>
                         <div className="text-sm text-slate-400">{flight.departure.time}</div>
                       </div>
                       <div className="text-slate-500">→</div>
                       <div className="flex items-center gap-2">
-                        <div className="text-2xl font-bold text-slate-50">{flight.arrival.airport}</div>
+                        <div className="text-2xl font-bold text-white">{flight.arrival.airport}</div>
                         <div className="text-sm text-slate-400">{flight.arrival.time}</div>
                       </div>
                     </div>
@@ -520,7 +530,7 @@ export default function SuggestionsPage() {
                         </div>
                       )}
                       <div className="text-right">
-                        <div className="text-4xl font-black text-slate-50">${flight.price}</div>
+                        <div className="text-4xl font-black text-white">${flight.price}</div>
                       </div>
                     </div>
                   </div>
@@ -611,7 +621,7 @@ export default function SuggestionsPage() {
                 >
                   {/* Name & Rating */}
                   <div className="mb-4">
-                    <h3 className="text-xl font-semibold text-slate-50 mb-2">{accommodation.name}</h3>
+                    <h3 className="text-xl font-semibold text-white mb-2 tracking-tight">{accommodation.name}</h3>
                     <div className="flex items-center gap-2 mb-2">
                       <div className="flex">
                         {[...Array(5)].map((_, i) => (
@@ -622,7 +632,7 @@ export default function SuggestionsPage() {
                       </div>
                       <span className="text-sm text-slate-400">{accommodation.rating}</span>
                     </div>
-                    <div className="text-2xl font-bold text-slate-50">${accommodation.pricePerNight}/night</div>
+                    <div className="text-2xl font-bold text-white">${accommodation.pricePerNight}/night</div>
                     <div className="text-sm text-slate-400 mt-1">{accommodation.location}</div>
                     <span className="inline-block mt-2 text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded">
                       {accommodation.type}
@@ -700,7 +710,7 @@ export default function SuggestionsPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-xl font-semibold text-slate-50">{activity.name}</h3>
+                        <h3 className="text-xl font-semibold text-white tracking-tight">{activity.name}</h3>
                         <span className="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded">
                           {activity.type}
                         </span>
@@ -757,7 +767,7 @@ export default function SuggestionsPage() {
             {membersCount > 0 && (
               <>
                 <div className="card-surface rounded-2xl p-6">
-                  <h2 className="text-xl font-semibold text-slate-50 mb-4">✅ Approved Flights</h2>
+                  <h2 className="text-xl font-semibold text-white mb-4 tracking-tight">✅ Approved Flights</h2>
                   {flights.filter((f) => isApprovedByAll('flight', f.id)).length === 0 ? (
                     <p className="text-slate-400">No flights approved by everyone yet.</p>
                   ) : (
@@ -770,7 +780,7 @@ export default function SuggestionsPage() {
                             className="p-4 rounded-xl bg-slate-800 border border-slate-700"
                           >
                             <div className="flex justify-between items-center mb-2">
-                              <div className="text-slate-50 font-semibold">{flight.airline}</div>
+                              <div className="text-white font-semibold">{flight.airline}</div>
                               <div className="text-slate-200 font-semibold">${flight.price}</div>
                             </div>
                             <div className="text-sm text-slate-300">
@@ -783,7 +793,7 @@ export default function SuggestionsPage() {
                 </div>
 
                 <div className="card-surface rounded-2xl p-6">
-                  <h2 className="text-xl font-semibold text-slate-50 mb-4">✅ Approved Stays</h2>
+                  <h2 className="text-xl font-semibold text-white mb-4 tracking-tight">✅ Approved Stays</h2>
                   {accommodations.filter((a) => isApprovedByAll('accommodation', a.id)).length === 0 ? (
                     <p className="text-slate-400">No stays approved by everyone yet.</p>
                   ) : (

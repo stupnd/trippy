@@ -302,9 +302,9 @@ export default function PreferencesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 py-8">
-      <div className="container mx-auto px-4 max-w-4xl">
-        <div className="mb-6">
+    <div className="min-h-screen pb-8">
+      <div className="container mx-auto px-4 md:px-8 max-w-4xl">
+        <div className="mb-10">
           <div className="flex gap-4 mb-4">
             <Link
               href="/"
@@ -319,7 +319,7 @@ export default function PreferencesPage() {
               ← Back to Trip
             </button>
           </div>
-          <h1 className="text-3xl font-bold text-slate-50">User Preferences</h1>
+          <h1 className="text-3xl font-bold text-white tracking-tight">User Preferences</h1>
           <p className="text-sm text-slate-400 mt-2">
             You can only edit your own preferences for this trip.
           </p>
@@ -328,8 +328,8 @@ export default function PreferencesPage() {
         {selectedMemberId && (
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Budget Preferences */}
-            <div className="card-surface rounded-lg p-6">
-              <h2 className="text-xl font-semibold mb-4 text-slate-50">💰 Budget Preferences</h2>
+            <div className="glass-card rounded-3xl p-6">
+              <h2 className="text-xl font-semibold mb-4 text-white tracking-tight">💰 Budget Preferences</h2>
 
               <div className="space-y-4">
                 <div>
@@ -346,7 +346,7 @@ export default function PreferencesPage() {
                           accommodation_budget_min: e.target.value,
                         })
                       }
-                      className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="px-4 py-2 bg-slate-900/60 backdrop-blur-xl border border-white/20 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 focus:outline-none"
                       placeholder="Min"
                       min="0"
                     />
@@ -359,7 +359,7 @@ export default function PreferencesPage() {
                           accommodation_budget_max: e.target.value,
                         })
                       }
-                      className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="px-4 py-2 bg-slate-900/60 backdrop-blur-xl border border-white/20 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 focus:outline-none"
                       placeholder="Max"
                       min="0"
                     />
@@ -369,8 +369,8 @@ export default function PreferencesPage() {
             </div>
 
             {/* Flight Preferences */}
-            <div className="card-surface rounded-lg p-6">
-              <h2 className="text-xl font-semibold mb-4 text-slate-50">✈️ Flight Preferences</h2>
+            <div className="glass-card rounded-3xl p-6">
+              <h2 className="text-xl font-semibold mb-4 text-white tracking-tight">✈️ Flight Preferences</h2>
 
               <div className="space-y-4">
                 <div>
@@ -386,7 +386,7 @@ export default function PreferencesPage() {
                         preferred_origin: e.target.value.toUpperCase(),
                       })
                     }
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-4 py-2 bg-slate-900/60 backdrop-blur-xl border border-white/20 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 focus:outline-none"
                     placeholder="LAX"
                     maxLength={3}
                   />
@@ -404,11 +404,11 @@ export default function PreferencesPage() {
                         flight_flexibility: e.target.value as 'low' | 'medium' | 'high',
                       })
                     }
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-4 py-2 bg-slate-900/60 backdrop-blur-xl border border-white/20 rounded-xl text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 focus:outline-none"
                   >
-                    <option value="low">Low - Fixed dates only</option>
-                    <option value="medium">Medium - Some flexibility</option>
-                    <option value="high">High - Very flexible</option>
+                    <option value="low" className="bg-slate-900">Low - Fixed dates only</option>
+                    <option value="medium" className="bg-slate-900">Medium - Some flexibility</option>
+                    <option value="high" className="bg-slate-900">High - Very flexible</option>
                   </select>
                 </div>
 
@@ -424,7 +424,7 @@ export default function PreferencesPage() {
                         budget_sensitivity: e.target.value as 'low' | 'medium' | 'high',
                       })
                     }
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-4 py-2 bg-slate-900/60 backdrop-blur-xl border border-white/20 rounded-xl text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 focus:outline-none"
                   >
                     <option value="low">Low - Price is not a concern</option>
                     <option value="medium">Medium - Balance price and quality</option>
@@ -435,8 +435,8 @@ export default function PreferencesPage() {
             </div>
 
             {/* Accommodation Preferences */}
-            <div className="card-surface rounded-lg p-6">
-              <h2 className="text-xl font-semibold mb-4 text-slate-50">🏨 Accommodation Preferences</h2>
+            <div className="glass-card rounded-3xl p-6">
+              <h2 className="text-xl font-semibold mb-4 text-white tracking-tight">🏨 Accommodation Preferences</h2>
 
               <div className="space-y-4">
                 <div>
@@ -451,7 +451,7 @@ export default function PreferencesPage() {
                         accommodation_type: e.target.value,
                       })
                     }
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-4 py-2 bg-slate-900/60 backdrop-blur-xl border border-white/20 rounded-xl text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 focus:outline-none"
                   >
                     <option value="">Select type</option>
                     {accommodationTypes.map((type) => (
@@ -465,8 +465,8 @@ export default function PreferencesPage() {
             </div>
 
             {/* Activity Interests */}
-            <div className="card-surface rounded-lg p-6">
-              <h2 className="text-xl font-semibold mb-4 text-slate-50">🎯 Activity Interests</h2>
+            <div className="glass-card rounded-3xl p-6">
+              <h2 className="text-xl font-semibold mb-4 text-white tracking-tight">🎯 Activity Interests</h2>
               <p className="text-sm text-slate-300 mb-4">
                 Select all activities you're interested in
               </p>
@@ -474,15 +474,15 @@ export default function PreferencesPage() {
                 {activityOptions.map((activity) => (
                   <label
                     key={activity}
-                    className="flex items-center space-x-2 cursor-pointer p-3 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors"
+                    className="flex items-center space-x-2 cursor-pointer p-3 glass-card rounded-xl hover:bg-white/10 transition-all"
                   >
                     <input
                       type="checkbox"
                       checked={formData.activity_interests.includes(activity)}
                       onChange={() => toggleActivityInterest(activity)}
-                      className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                      className="w-4 h-4 rounded border-white/20 bg-slate-900/60 text-blue-600 focus:ring-2 focus:ring-blue-500/50"
                     />
-                    <span className="text-slate-200">{activity}</span>
+                    <span className="text-slate-200 text-sm">{activity}</span>
                   </label>
                 ))}
               </div>
@@ -506,7 +506,7 @@ export default function PreferencesPage() {
               <button
                 type="submit"
                 disabled={saving}
-                className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-gradient-to-r from-indigo-600 to-violet-700 text-white px-8 py-3 rounded-xl font-semibold hover:from-indigo-700 hover:to-violet-800 transition-all shadow-lg shadow-violet-600/40 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saving ? 'Saving...' : 'Save Preferences'}
               </button>

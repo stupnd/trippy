@@ -52,17 +52,17 @@ body > * {
   }
   
   .card-surface {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(15, 23, 42, 0.6); /* bg-slate-900/60 */
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     color: var(--text-primary);
   }
 
   .glass-card {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: rgba(15, 23, 42, 0.6); /* bg-slate-900/60 */
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 1.5rem;
   }
@@ -73,9 +73,9 @@ body > * {
 
   .glass-card-hover:hover {
     transform: translateY(-0.5rem);
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    background: rgba(15, 23, 42, 0.7); /* Darker on hover */
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
     border-color: rgba(255, 255, 255, 0.3);
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
   }
@@ -172,5 +172,32 @@ body > * {
     margin: -1px;
     border-radius: inherit;
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 50%, rgba(0, 0, 0, 0.2) 100%);
+  }
+
+  /* Custom Scrollbars */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+
+  /* Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05);
   }
 }
