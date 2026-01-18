@@ -128,6 +128,13 @@ export default function CommunityPage() {
   }, [user]);
 
   const openRequestModal = (trip: TripRow) => {
+    // Check if user already has a pending request
+    const existingRequest = requestsByTrip[trip.id];
+    if (existingRequest?.status === 'pending') {
+      // Don't open modal, user already has a pending request
+      return;
+    }
+    
     setRequestTrip(trip);
     setRequestError('');
     setRequestForm({
@@ -143,6 +150,7 @@ export default function CommunityPage() {
       return;
     }
     setRequestSaving(true);
+    setRequestError('');
     try {
       const { data, error: insertError } = await supabase
         .from('join_requests')
@@ -155,11 +163,35 @@ export default function CommunityPage() {
         })
         .select('*')
         .single();
-      if (insertError) throw insertError;
-        setRequestsByTrip((prev) => ({ ...prev, [requestTrip.id]: data as JoinRequest }));
+      
+      if (insertError) {
+        // Handle duplicate key violation (error code 23505)
+        if (insertError.code === '23505' || insertError.message?.includes('unique constraint') || insertError.message?.includes('duplicate key')) {
+          setRequestError('You have already sent a request for this trip.');
+          // Refresh requests to get the existing one
+          const { data: existingRequest } = await supabase
+            .from('join_requests')
+            .select('*')
+            .eq('trip_id', requestTrip.id)
+            .eq('requester_id', user.id)
+            .maybeSingle();
+          if (existingRequest) {
+            setRequestsByTrip((prev) => ({ ...prev, [requestTrip.id]: existingRequest as JoinRequest }));
+          }
+          return;
+        }
+        throw insertError;
+      }
+      
+      setRequestsByTrip((prev) => ({ ...prev, [requestTrip.id]: data as JoinRequest }));
       setRequestOpen(false);
     } catch (err: any) {
-      setRequestError(err.message || 'Failed to submit request');
+      // Additional check for duplicate error messages
+      if (err.code === '23505' || err.message?.includes('unique constraint') || err.message?.includes('duplicate key')) {
+        setRequestError('You have already sent a request for this trip.');
+      } else {
+        setRequestError(err.message || 'Failed to submit request');
+      }
     } finally {
       setRequestSaving(false);
     }
@@ -381,8 +413,12 @@ function TripCard({ trip, idx, user, isMember, request, onJoin }: any) {
                 Open Trip
               </Link>
             ) : request?.status === 'pending' ? (
-              <div className="flex-1 py-4 bg-slate-100 border border-slate-200 rounded-2xl font-bold text-slate-500 text-center cursor-default dark:bg-white/5 dark:border-white/10 dark:text-slate-400">
-                Pending...
+              <div className="flex-1 py-4 bg-indigo-500/20 border border-indigo-500/30 rounded-2xl font-bold text-indigo-300 text-center cursor-default">
+                Request Pending
+              </div>
+            ) : request?.status === 'rejected' ? (
+              <div className="flex-1 py-4 bg-white/5 border border-white/10 rounded-2xl font-bold text-slate-400 text-center cursor-default" title="Your previous request was not accepted.">
+                Request Not Accepted
               </div>
             ) : (
               <button onClick={onJoin} className="flex-1 py-4 bg-transparent border border-slate-200 text-slate-900 rounded-2xl font-bold hover:border-slate-300 hover:bg-slate-100 transition-all dark:border-white/10 dark:text-white dark:hover:border-white/20 dark:hover:bg-white/5">
