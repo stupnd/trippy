@@ -8,6 +8,7 @@ import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { TripRow } from '@/lib/supabase';
+import LandingPage from '@/components/LandingPage';
 
 interface UserTrip extends TripRow {
   joined_at: string;
@@ -107,56 +108,7 @@ export default function Home() {
 
   // Landing page for non-authenticated users
   if (!user) {
-    return (
-      <div className="min-h-screen py-16">
-        <div className="container mx-auto px-4 md:px-8 max-w-7xl">
-          <div className="max-w-2xl mx-auto text-center">
-            <h1 className="text-6xl font-bold text-slate-900 dark:text-slate-50 mb-4">
-              Trippy
-            </h1>
-            <p className="text-xl text-slate-700 dark:text-slate-300 mb-12">
-              Plan your next adventure together with your group
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                href="/auth"
-                className="bg-sky-200 text-slate-900 px-8 py-4 rounded-lg font-semibold hover:bg-sky-300 transition-colors shadow-lg dark:bg-blue-600 dark:text-white dark:hover:bg-blue-700"
-              >
-                Sign In to Get Started
-              </Link>
-              <Link
-                href="/trips/join"
-                className="bg-sky-100 text-slate-900 px-8 py-4 rounded-lg font-semibold hover:bg-sky-200 transition-colors shadow-lg border border-sky-200 dark:card-surface dark:text-slate-50 dark:hover:bg-slate-700 dark:border-slate-600"
-              >
-                Join a Trip
-              </Link>
-            </div>
-
-            <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
-              <div className="card-surface p-6 rounded-lg shadow">
-                <h3 className="text-xl font-semibold mb-2 text-slate-900 dark:text-slate-50">📅 Plan Together</h3>
-                <p className="text-slate-700 dark:text-slate-300">
-                  Collaborate on flights, accommodations, and activities with your group
-                </p>
-              </div>
-              <div className="card-surface p-6 rounded-lg shadow">
-                <h3 className="text-xl font-semibold mb-2 text-slate-900 dark:text-slate-50">✈️ Find Flights</h3>
-                <p className="text-slate-700 dark:text-slate-300">
-                  Get smart recommendations based on everyone's preferences
-                </p>
-              </div>
-              <div className="card-surface p-6 rounded-lg shadow">
-                <h3 className="text-xl font-semibold mb-2 text-slate-900 dark:text-slate-50">🎯 Build Itinerary</h3>
-                <p className="text-slate-700 dark:text-slate-300">
-                  Create a day-by-day plan that works for everyone
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <LandingPage />;
   }
 
   // User Dashboard - show user's trips
