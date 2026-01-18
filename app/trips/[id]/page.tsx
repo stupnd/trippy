@@ -1128,17 +1128,6 @@ export default function TripDetailPage() {
           </motion.div>
         )}
       </AnimatePresence>
-      {/* Breadcrumb */}
-      <div className="container mx-auto px-4 md:px-8 max-w-7xl pt-4 mb-4">
-        <div className="flex items-center gap-2 text-sm text-slate-400">
-          <Link href="/" className="hover:text-slate-200 transition-colors">
-            My Trips
-          </Link>
-          <span>›</span>
-          <span className="text-slate-300">{trip.name}</span>
-        </div>
-      </div>
-
       {/* Header - Transparent Section */}
       <div className="container mx-auto px-4 md:px-8 max-w-7xl pb-10">
         {unreadCount > 0 && drawerTab !== 'chat' && (

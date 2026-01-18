@@ -18,6 +18,7 @@ export default function PreferencesPage() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const [selectedMemberId, setSelectedMemberId] = useState<string>('');
+  const [tripName, setTripName] = useState<string>('');
   const [formData, setFormData] = useState({
     preferred_origin: '',
     flight_flexibility: 'medium' as 'low' | 'medium' | 'high',
@@ -305,20 +306,6 @@ export default function PreferencesPage() {
     <div className="min-h-screen pb-8">
       <div className="container mx-auto px-4 md:px-8 max-w-4xl">
         <div className="mb-10">
-          <div className="flex gap-4 mb-4">
-            <Link
-              href="/"
-              className="text-blue-400 hover:text-blue-300 underline"
-            >
-              ← Back to My Trips
-            </Link>
-            <button
-              onClick={() => router.back()}
-              className="text-blue-400 hover:text-blue-300 underline"
-            >
-              ← Back to Trip
-            </button>
-          </div>
           <h1 className="text-3xl font-bold text-white tracking-tight">User Preferences</h1>
           <p className="text-sm text-slate-400 mt-2">
             You can only edit your own preferences for this trip.

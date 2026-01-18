@@ -61,12 +61,6 @@ export default function ShareTripPage() {
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="container mx-auto px-4 py-8">
-          <Link
-            href="/"
-            className="text-indigo-600 hover:text-indigo-700 mb-4 inline-block underline"
-          >
-            ← Back to My Trips
-          </Link>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">{trip.name}</h1>
           <p className="text-2xl text-gray-600">
             {trip.destination.city}, {trip.destination.country}

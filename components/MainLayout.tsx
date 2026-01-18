@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import WorldMapFlashlight from './WorldMapFlashlight';
 import GlobalNavbar from './GlobalNavbar';
 import ThemeToggle from './ThemeToggle';
+import Breadcrumbs from './Breadcrumbs';
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -29,6 +30,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           transition={{ duration: 0.3, ease: 'easeInOut' }}
           className="relative z-10 pt-28"
         >
+          {/* Global Breadcrumbs */}
+          <Breadcrumbs />
           {children}
         </motion.main>
       </AnimatePresence>
