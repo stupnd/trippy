@@ -40,6 +40,12 @@ export default function DiscoverPage() {
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [destinationsLoading, setDestinationsLoading] = useState(true);
   const [destinationsError, setDestinationsError] = useState('');
+  const destinationsCacheKey = 'trending_destinations_v1';
+  const destinationsCacheTtlMs = 1000 * 60 * 60 * 6;
+
+  const getTrendingImage = (destination: Destination) => {
+    return destination.image?.trim() || '';
+  };
 
   const visibleDestinations = destinations
     .filter((dest) => !heartedDestinations.has(dest.id))
@@ -58,6 +64,23 @@ export default function DiscoverPage() {
     let isMounted = true;
 
     const fetchTrending = async () => {
+      if (typeof window !== 'undefined') {
+        const cached = localStorage.getItem(destinationsCacheKey);
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached) as { data: Destination[]; ts: number };
+            if (parsed?.data?.length && Date.now() - parsed.ts < destinationsCacheTtlMs) {
+              if (isMounted) {
+                setDestinations(parsed.data);
+                setDestinationsLoading(false);
+              }
+              return;
+            }
+          } catch {
+            // Ignore cache parsing errors.
+          }
+        }
+      }
       setDestinationsLoading(true);
       setDestinationsError('');
       try {
@@ -69,6 +92,9 @@ export default function DiscoverPage() {
         const list = Array.isArray(data.destinations) ? data.destinations : [];
         if (isMounted) {
           setDestinations(list);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(destinationsCacheKey, JSON.stringify({ data: list, ts: Date.now() }));
+          }
         }
       } catch (error) {
         console.error('Error loading trending destinations:', error);
@@ -294,9 +320,17 @@ export default function DiscoverPage() {
                 className="group rounded-2xl overflow-hidden bg-white/5 backdrop-blur-2xl border border-white/15"
               >
                 <div className="relative h-32 sm:h-36">
-                  <div
-                    className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
-                    style={{ backgroundImage: `url(${dest.image})` }}
+                  <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" />
+                  <img
+                    src={getTrendingImage(dest)}
+                    alt={`${dest.name}, ${dest.country}`}
+                    className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    loading="lazy"
+                    decoding="async"
+                    referrerPolicy="no-referrer"
+                    onError={(event) => {
+                      event.currentTarget.style.display = 'none';
+                    }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
                   <motion.button

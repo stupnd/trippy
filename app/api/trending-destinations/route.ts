@@ -31,6 +31,42 @@ const slugify = (value: string): string => {
   return cleaned || 'destination';
 };
 
+const isHttpsUrl = (value: string): boolean => {
+  return /^https:\/\//i.test(value);
+};
+
+const fetchWithTimeout = async (url: string, options: RequestInit, timeoutMs = 2500) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
+const isReachableImage = async (url: string): Promise<boolean> => {
+  if (!isHttpsUrl(url)) return false;
+  try {
+    const head = await fetchWithTimeout(url, { method: 'HEAD' });
+    if (head.ok) {
+      const contentType = head.headers.get('content-type') || '';
+      return contentType.startsWith('image/');
+    }
+  } catch {
+    // Fall through to GET check.
+  }
+
+  try {
+    const response = await fetchWithTimeout(url, { method: 'GET' });
+    if (!response.ok) return false;
+    const contentType = response.headers.get('content-type') || '';
+    return contentType.startsWith('image/');
+  } catch {
+    return false;
+  }
+};
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const limitParam = Number.parseInt(searchParams.get('limit') || '8', 10);
@@ -54,7 +90,7 @@ Output a JSON array. Each item must include:
 - vibe: one of ${allowedVibes.join(', ')}
 - lat: latitude as number
 - lng: longitude as number
-- image_query: 2-4 word image search phrase
+- image_url: a direct https image URL (prefer Wikimedia Commons, official tourism boards, or other open-license sources)
 
 Rules:
 - Provide ${limit} unique destinations worldwide.
@@ -88,7 +124,22 @@ Rules:
       );
     }
 
-    const destinations = rawList.slice(0, limit).map((item: any, index: number) => {
+    const fetchWikiImage = async (title: string): Promise<string> => {
+      try {
+        const wikiUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`;
+        const response = await fetch(wikiUrl, {
+          headers: { 'User-Agent': 'Trippy/1.0 (contact: support@trippy.app)' },
+        });
+        if (!response.ok) return '';
+        const data = await response.json();
+        const candidate = data?.thumbnail?.source || data?.originalimage?.source || '';
+        return isHttpsUrl(candidate) ? candidate : '';
+      } catch {
+        return '';
+      }
+    };
+
+    const destinations = await Promise.all(rawList.slice(0, limit).map(async (item: any, index: number) => {
       const name = toString(item?.name, `Destination ${index + 1}`);
       const country = toString(item?.country, 'Unknown');
       const countryCode = toCountryCode(item?.country_code || item?.countryCode);
@@ -99,8 +150,17 @@ Rules:
         : 'history';
       const lat = toNumber(item?.lat, 0);
       const lng = toNumber(item?.lng, 0);
-      const imageQuery = toString(item?.image_query, `${name} ${country}`);
-      const image = `https://source.unsplash.com/featured/600x400?${encodeURIComponent(imageQuery)}`;
+      const imageUrl = toString(item?.image_url || item?.imageUrl || item?.image, '');
+      let image = isHttpsUrl(imageUrl) ? imageUrl : '';
+      if (image && !(await isReachableImage(image))) {
+        image = '';
+      }
+      if (!image) {
+        image = await fetchWikiImage(`${name}, ${country}`);
+      }
+      if (!image) {
+        image = await fetchWikiImage(name);
+      }
       const idBase = toString(item?.id, `${name}-${country}-${index}`);
 
       return {
@@ -114,11 +174,11 @@ Rules:
         lng,
         image,
       };
-    });
+    }));
 
     return NextResponse.json(
       { destinations },
-      { headers: { 'Cache-Control': 'no-store' } }
+      { headers: { 'Cache-Control': 'public, max-age=21600, stale-while-revalidate=86400' } }
     );
   } catch (error: any) {
     console.error('Error generating trending destinations:', error);
