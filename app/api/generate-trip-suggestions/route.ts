@@ -179,8 +179,14 @@ export async function POST(request: NextRequest) {
 
     // Use trip destination as default if no preferences provided
     const destination = `${trip.destination_city || 'Unknown'}, ${trip.destination_country || 'Unknown'}`;
+    // Use trip origin_iata if available, otherwise fall back to user preferences
+    const tripOrigin = (trip as any).origin_iata || null;
     const preferredOrigins =
-      originAirports.length > 0 ? originAirports : ['Not specified'];
+      tripOrigin
+        ? [tripOrigin]
+        : originAirports.length > 0
+        ? originAirports
+        : ['Not specified'];
 
     // Construct the prompt for Gemini - handle missing trip data
     const rejectionNotes = rejection_context
@@ -189,13 +195,14 @@ export async function POST(request: NextRequest) {
     const prompt = `You are an expert travel coordinator. Based on the following group preferences for a trip to ${destination}, suggest 5 flights, 5 accommodations, and 10 activities.${rejectionNotes}
 
 Trip Details:
+- Origin: ${(trip as any).origin_city || 'Not specified'} (${tripOrigin || 'Not specified'})
 - Destination: ${destination}
 - Start Date: ${trip.start_date || 'Not specified'}
 - End Date: ${trip.end_date || 'Not specified'}
 - Number of Travelers: ${membersList.length || 1}
 
 Group Preferences Summary:
-- Preferred Origin Airports: ${preferredOrigins.join(', ') || 'Not specified'}
+- Origin Airport: ${preferredOrigins.join(', ') || 'Not specified'}${tripOrigin ? ' (from trip)' : originAirports.length > 0 ? ' (from preferences)' : ''}
 - Flight Flexibility: ${flightFlexibilities.join(', ') || 'medium'}
 - Budget Sensitivity: ${budgetSensitivities.join(', ') || 'medium'}
 - Accommodation Budget Range: $${accommodationBudgetMin}-$${accommodationBudgetMax} per night
@@ -270,7 +277,8 @@ Important:
 - Provide exactly 5 flights, 5 accommodations, and 10 activities.
 - Use realistic data for prices, airports, and locations.
 - Consider the group's budget ranges and preferences.
-- For flights, prefer direct flights when possible, but include some with layovers if they're more affordable.
+- For flights, ALL flights MUST depart from ${preferredOrigins[0]} (origin airport code) and arrive at the destination airport for ${destination}. The departure.airport field should be ${preferredOrigins[0]} and arrival.airport should be a valid airport code for ${destination}.
+- Prefer direct flights when possible, but include some with layovers if they're more affordable.
 - For accommodations, prioritize the preferred types but include variety.
 - For activities, focus on the interests mentioned but provide a diverse mix.
 - CRITICAL: Include a "link" field for each flight and accommodation with a realistic booking URL (e.g., airline booking page, hotel booking site, Airbnb listing). Use realistic URLs like "https://www.expedia.com/flight/...", "https://www.booking.com/hotel/...", or "https://www.airbnb.com/rooms/...".`;

@@ -115,9 +115,11 @@ function TripCard({ trip, index }: { trip: UserTrip; index: number }) {
           {trip.name}
         </h3>
         {/* Route Chip with IATA Codes */}
-        <span className="inline-block text-sm font-mono font-bold text-emerald-400 mb-2 tracking-widest border border-emerald-500/30 px-2 py-0.5 rounded-lg bg-emerald-500/10">
-          {(trip as any).origin_airport || 'YOW'} → {(trip as any).destination_iata || 'YTZ'}
-        </span>
+        {hasMounted && (
+          <span className="inline-block text-sm font-mono font-bold text-emerald-400 mb-2 tracking-widest border border-emerald-500/30 px-2 py-0.5 rounded-lg bg-emerald-500/10">
+            {(trip as any).origin_iata || '???'} → {(trip as any).destination_iata || '???'}
+          </span>
+        )}
         <p className="text-slate-300 text-sm mb-2">
           {trip.destination_city}, {trip.destination_country}
         </p>
