@@ -223,7 +223,7 @@ export default function DiscoverPage() {
     : undefined;
 
   return (
-    <div className="min-h-screen pb-8 bg-slate-50 dark:bg-slate-900">
+    <div className="min-h-screen pb-8">
       <div className="container mx-auto px-4 md:px-8 max-w-7xl">
         {/* Page Title - Editorial Style */}
         <div className="mb-10">
