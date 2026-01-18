@@ -7,6 +7,7 @@ import { motion, useMotionValue, useSpring } from 'framer-motion';
 import { LogOut, User, Settings, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
+import NotificationBadge from './NotificationBadge';
 
 export default function GlobalNavbar() {
   const pathname = usePathname();
@@ -178,11 +179,14 @@ export default function GlobalNavbar() {
 
           {/* Right: Profile Section */}
           {user ? (
-            <div className="relative" ref={dropdownRef}>
-              <button
-                onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="flex items-center gap-2 glass-card px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 transition-all"
-              >
+            <div className="flex items-center gap-3">
+              {/* Notification Badge */}
+              <NotificationBadge />
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                  className="flex items-center gap-2 glass-card px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 transition-all"
+                >
                 {avatarUrl ? (
                   <img
                     src={avatarUrl}
@@ -238,6 +242,7 @@ export default function GlobalNavbar() {
                   </button>
                 </motion.div>
               )}
+              </div>
             </div>
           ) : (
             <Link
