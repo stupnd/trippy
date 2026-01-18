@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { format, differenceInCalendarDays } from 'date-fns';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
@@ -20,6 +20,7 @@ type ModuleStatus = 'Awaiting Preferences' | 'Ready to Generate' | 'Locked';
 export default function TripDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const tripId = params.id as string;
   const { user, loading: authLoading } = useAuth();
   const { isMember, loading: memberLoading } = useTripMember(tripId);
@@ -655,6 +656,14 @@ export default function TripDetailPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trip?.id, members.length, preferencesUpdatedAt]);
+
+  useEffect(() => {
+    if (searchParams.get('chat') === '1') {
+      setMembersDrawerOpen(true);
+      setDrawerTab('chat');
+      setUnreadCount(0);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (budgetBreakdownOpen && budgetTab === 'itinerary' && itineraryDays.length === 0 && !itineraryLoading) {
@@ -1297,7 +1306,7 @@ export default function TripDetailPage() {
             className="md:col-span-2 glass-card p-6 glass-card-hover cursor-pointer text-left w-full hover:bg-white/10 transition-all relative"
           >
             {unreadCount > 0 && (
-              <span className="absolute top-4 right-4 w-6 h-6 bg-red-500 rounded-full text-white text-xs font-bold flex items-center justify-center animate-pulse z-10">
+              <span className="absolute -top-2 -left-2 w-6 h-6 bg-red-500 rounded-full text-white text-xs font-bold flex items-center justify-center animate-pulse z-10">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
