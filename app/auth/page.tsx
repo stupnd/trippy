@@ -68,17 +68,17 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center py-12 px-4">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center py-12 px-4">
       <div className="max-w-md w-full">
         <div className="card-surface rounded-lg shadow-xl p-8">
-          <h1 className="text-3xl font-bold text-slate-50 mb-2">Welcome to Trippy</h1>
-          <p className="text-slate-300 mb-6">
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-50 mb-2">Welcome to Trippy</h1>
+          <p className="text-slate-700 dark:text-slate-300 mb-6">
             Sign in with your email to continue
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-200 mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
                 Email Address
               </label>
               <input
@@ -87,20 +87,20 @@ export default function AuthPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-50 dark:focus:ring-blue-500 dark:focus:border-blue-500"
                 placeholder="you@example.com"
                 disabled={loading}
               />
             </div>
 
             {error && (
-              <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded-lg">
+              <div className="bg-red-100 border border-red-200 text-red-700 px-4 py-3 rounded-lg dark:bg-red-900 dark:border-red-700 dark:text-red-100">
                 {error}
               </div>
             )}
 
             {message && (
-              <div className="bg-green-900 border border-green-700 text-green-100 px-4 py-3 rounded-lg">
+              <div className="bg-green-100 border border-green-200 text-green-700 px-4 py-3 rounded-lg dark:bg-green-900 dark:border-green-700 dark:text-green-100">
                 {message}
               </div>
             )}
@@ -108,13 +108,13 @@ export default function AuthPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-sky-200 text-slate-900 px-6 py-3 rounded-lg font-semibold hover:bg-sky-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed dark:bg-blue-600 dark:text-white dark:hover:bg-blue-700"
             >
               {loading ? 'Sending...' : 'Send Magic Link'}
             </button>
           </form>
 
-          <p className="mt-6 text-sm text-slate-400 text-center">
+          <p className="mt-6 text-sm text-slate-600 dark:text-slate-400 text-center">
             We'll send you a secure link to sign in. No password needed!
           </p>
         </div>

@@ -557,9 +557,9 @@ export default function ProfilePage() {
                 animate={{
                   y: focusedField === 'name' || profile.name ? -24 : 0,
                   scale: focusedField === 'name' || profile.name ? 0.875 : 1,
-                  color: focusedField === 'name' ? '#cbd5e1' : '#94a3b8',
+                  color: focusedField === 'name' ? '#334155' : '#64748b',
                 }}
-                className="absolute left-4 top-4 text-slate-400 pointer-events-none origin-left transition-colors"
+                className="absolute left-4 top-4 text-slate-600 dark:text-slate-400 pointer-events-none origin-left transition-colors"
               >
                 Name
               </motion.label>
@@ -572,10 +572,10 @@ export default function ProfilePage() {
                   setFocusedField(null);
                   saveField('name');
                 }}
-                className={`w-full px-4 pt-6 pb-2 bg-slate-900/60 backdrop-blur-xl border rounded-2xl text-white placeholder-transparent focus:outline-none focus:ring-2 transition-all ${
+                className={`w-full px-4 pt-6 pb-2 bg-white border rounded-2xl text-slate-900 placeholder-transparent focus:outline-none focus:ring-2 transition-all dark:bg-slate-900/60 dark:text-white ${
                   savedFields.has('name')
-                    ? 'border-green-500/50 ring-2 ring-green-500/20'
-                    : 'border-white/20 focus:border-indigo-500/50 focus:ring-indigo-500/20'
+                    ? 'border-green-400 ring-2 ring-green-200/60 dark:border-green-500/50 dark:ring-green-500/20'
+                    : 'border-slate-200 focus:border-sky-300 focus:ring-sky-300/60 dark:border-white/20 dark:focus:border-indigo-500/50 dark:focus:ring-indigo-500/20'
                 }`}
               />
               {savedFields.has('name') && (
@@ -596,9 +596,9 @@ export default function ProfilePage() {
                 animate={{
                   y: focusedField === 'email' || profile.email ? -24 : 0,
                   scale: focusedField === 'email' || profile.email ? 0.875 : 1,
-                  color: '#94a3b8',
+                  color: '#64748b',
                 }}
-                className="absolute left-4 top-4 text-slate-400 pointer-events-none origin-left"
+                className="absolute left-4 top-4 text-slate-600 dark:text-slate-400 pointer-events-none origin-left"
               >
                 Email
               </motion.label>
@@ -606,7 +606,7 @@ export default function ProfilePage() {
                 type="email"
                 value={profile.email}
                 disabled
-                className="w-full px-4 pt-6 pb-2 bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-2xl text-slate-400 cursor-not-allowed"
+                className="w-full px-4 pt-6 pb-2 bg-slate-100 border border-slate-200 rounded-2xl text-slate-500 cursor-not-allowed dark:bg-slate-900/40 dark:border-white/10 dark:text-slate-400"
               />
             </div>
 
@@ -617,9 +617,9 @@ export default function ProfilePage() {
                 animate={{
                   y: focusedField === 'bio' || profile.bio ? -24 : 0,
                   scale: focusedField === 'bio' || profile.bio ? 0.875 : 1,
-                  color: focusedField === 'bio' ? '#cbd5e1' : '#94a3b8',
+                  color: focusedField === 'bio' ? '#334155' : '#64748b',
                 }}
-                className="absolute left-4 top-4 text-slate-400 pointer-events-none origin-left transition-colors"
+                className="absolute left-4 top-4 text-slate-600 dark:text-slate-400 pointer-events-none origin-left transition-colors"
               >
                 Bio
               </motion.label>
@@ -632,10 +632,10 @@ export default function ProfilePage() {
                   saveField('bio');
                 }}
                 rows={4}
-                className={`w-full px-4 pt-6 pb-2 bg-slate-900/60 backdrop-blur-xl border rounded-2xl text-white placeholder-transparent focus:outline-none focus:ring-2 transition-all resize-none ${
+                className={`w-full px-4 pt-6 pb-2 bg-white border rounded-2xl text-slate-900 placeholder-transparent focus:outline-none focus:ring-2 transition-all resize-none dark:bg-slate-900/60 dark:text-white ${
                   savedFields.has('bio')
-                    ? 'border-green-500/50 ring-2 ring-green-500/20'
-                    : 'border-white/20 focus:border-indigo-500/50 focus:ring-indigo-500/20'
+                    ? 'border-green-400 ring-2 ring-green-200/60 dark:border-green-500/50 dark:ring-green-500/20'
+                    : 'border-slate-200 focus:border-sky-300 focus:ring-sky-300/60 dark:border-white/20 dark:focus:border-indigo-500/50 dark:focus:ring-indigo-500/20'
                 }`}
               />
               {savedFields.has('bio') && (
@@ -699,7 +699,7 @@ export default function ProfilePage() {
                   stopCamera();
                   setAvatarModalOpen(false);
                 }}
-                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90]"
+                className="fixed inset-0 bg-slate-900/30 dark:bg-black/60 backdrop-blur-sm z-[90]"
               />
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -708,24 +708,24 @@ export default function ProfilePage() {
                 className="fixed inset-0 z-[100] flex items-center justify-center p-4"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="glass-card rounded-3xl p-8 max-w-md w-full border border-white/20">
+                <div className="glass-card rounded-3xl p-8 max-w-md w-full border border-slate-200 dark:border-white/20">
                   <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-2xl font-bold text-white">Edit Avatar</h2>
+                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Edit Avatar</h2>
                     <button
                       onClick={() => {
                         stopCamera();
                         setAvatarModalOpen(false);
                       }}
-                      className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                      className="p-2 hover:bg-slate-100 rounded-full transition-colors dark:hover:bg-white/10"
                     >
-                      <X className="w-5 h-5 text-white" />
+                      <X className="w-5 h-5 text-slate-700 dark:text-white" />
                     </button>
                   </div>
 
                   {/* Camera Mode */}
                   {cameraMode ? (
                     <div className="mb-6">
-                      <div className="relative bg-slate-900 rounded-2xl overflow-hidden mb-4 aspect-square border-2 border-white/20 min-h-[300px]">
+                      <div className="relative bg-slate-100 dark:bg-slate-900 rounded-2xl overflow-hidden mb-4 aspect-square border-2 border-slate-200 dark:border-white/20 min-h-[300px]">
                         <video
                           ref={videoRef}
                           autoPlay
@@ -754,7 +754,7 @@ export default function ProfilePage() {
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                           onClick={stopCamera}
-                          className="flex-1 px-6 py-3 bg-slate-700 border border-white/20 rounded-2xl text-white hover:bg-slate-600 transition-all"
+                          className="flex-1 px-6 py-3 bg-slate-100 border border-slate-200 rounded-2xl text-slate-800 hover:bg-slate-200 transition-all dark:bg-slate-700 dark:border-white/20 dark:text-white dark:hover:bg-slate-600"
                         >
                           Cancel
                         </motion.button>
@@ -774,13 +774,13 @@ export default function ProfilePage() {
                     <>
                       {/* Take Photo Option */}
                       <div className="mb-6">
-                        <label className="block mb-3 text-slate-300 text-sm font-semibold">Take Photo</label>
+                        <label className="block mb-3 text-slate-700 dark:text-slate-300 text-sm font-semibold">Take Photo</label>
                         <motion.button
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                           onClick={startCamera}
                           disabled={uploadingAvatar}
-                          className="w-full px-6 py-4 bg-gradient-to-r from-indigo-600 to-violet-700 border border-white/20 rounded-2xl text-white hover:from-indigo-700 hover:to-violet-800 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                          className="w-full px-6 py-4 bg-sky-200 border border-sky-200 rounded-2xl text-slate-900 hover:bg-sky-300 transition-all flex items-center justify-center gap-3 disabled:opacity-50 dark:bg-gradient-to-r dark:from-indigo-600 dark:to-violet-700 dark:border-white/20 dark:text-white dark:hover:from-indigo-700 dark:hover:to-violet-800"
                         >
                           <Video className="w-5 h-5" />
                           Use Camera
@@ -789,7 +789,7 @@ export default function ProfilePage() {
 
                       {/* Upload Option */}
                       <div className="mb-6">
-                        <label className="block mb-3 text-slate-300 text-sm font-semibold">Upload Photo</label>
+                        <label className="block mb-3 text-slate-700 dark:text-slate-300 text-sm font-semibold">Upload Photo</label>
                         <input
                           ref={fileInputRef}
                           type="file"
@@ -805,7 +805,7 @@ export default function ProfilePage() {
                           whileTap={{ scale: 0.98 }}
                           onClick={() => fileInputRef.current?.click()}
                           disabled={uploadingAvatar}
-                          className="w-full px-6 py-4 bg-slate-900/60 border border-white/20 rounded-2xl text-white hover:bg-slate-900/80 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                          className="w-full px-6 py-4 bg-slate-100 border border-slate-200 rounded-2xl text-slate-900 hover:bg-slate-200 transition-all flex items-center justify-center gap-3 disabled:opacity-50 dark:bg-slate-900/60 dark:border-white/20 dark:text-white dark:hover:bg-slate-900/80"
                         >
                           <Upload className="w-5 h-5" />
                           {uploadingAvatar ? 'Uploading...' : 'Choose File'}
@@ -817,7 +817,7 @@ export default function ProfilePage() {
                   {/* Preset Avatars */}
                   {!cameraMode && (
                     <div>
-                      <label className="block mb-3 text-slate-300 text-sm font-semibold">Or Choose a Preset</label>
+                      <label className="block mb-3 text-slate-700 dark:text-slate-300 text-sm font-semibold">Or Choose a Preset</label>
                     <div className="grid grid-cols-4 gap-4">
                       {avatarPresets.map((preset) => {
                         const Icon = preset.icon;

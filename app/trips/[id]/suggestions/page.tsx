@@ -8,6 +8,7 @@ import { ArrowLeft, Sparkles, Plane, Hotel, Target, Calendar, Check } from 'luci
 import confetti from 'canvas-confetti';
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
+import { FinalizedSuggestionRow } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import MagneticButton from '@/components/MagneticButton';
 import FlightMapPath from '@/components/FlightMapPath';
@@ -80,6 +81,7 @@ export default function SuggestionsPage() {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
   const [votes, setVotes] = useState<VotesByOption>({});
+  const [finalized, setFinalized] = useState<FinalizedSuggestionRow[]>([]);
   const [membersCount, setMembersCount] = useState(0);
   const [votingPulse, setVotingPulse] = useState<string | null>(null);
   const [approvedItems, setApprovedItems] = useState<Set<string>>(new Set());
@@ -98,6 +100,7 @@ export default function SuggestionsPage() {
     if (user) {
       fetchSuggestions();
       fetchVotes();
+      fetchFinalized();
       fetchMembersCount();
     }
   }, [authLoading, user, tripId, router]);
@@ -187,6 +190,19 @@ export default function SuggestionsPage() {
       setVotes(byOption);
     } catch (err) {
       console.error('Error fetching votes:', err);
+    }
+  };
+
+  const fetchFinalized = async () => {
+    try {
+      const { data, error: finalizedError } = await supabase
+        .from('suggestion_finalized')
+        .select('*')
+        .eq('trip_id', tripId);
+      if (finalizedError) throw finalizedError;
+      setFinalized((data || []) as FinalizedSuggestionRow[]);
+    } catch (err) {
+      console.error('Error fetching finalized items:', err);
     }
   };
 
@@ -393,6 +409,62 @@ export default function SuggestionsPage() {
     return reasons.length > 0 ? reasons.join('\n') : null;
   };
 
+  const finalizeItem = async (optionType: 'flight' | 'accommodation' | 'activity', optionId: string) => {
+    if (!user) return;
+    try {
+      const existing = finalized.filter((item) => item.option_type === optionType);
+      if (optionType !== 'activity' && existing.length > 0 && !existing.some((i) => i.option_id === optionId)) {
+        await supabase
+          .from('suggestion_finalized')
+          .delete()
+          .eq('trip_id', tripId)
+          .eq('option_type', optionType);
+      }
+
+      const { data, error: finalizeError } = await supabase
+        .from('suggestion_finalized')
+        .insert({
+          trip_id: tripId,
+          option_type: optionType,
+          option_id: optionId,
+          finalized_by: user.id,
+        })
+        .select('*')
+        .single();
+
+      if (finalizeError) throw finalizeError;
+      if (data) {
+        setFinalized((prev) => {
+          if (optionType === 'activity') {
+            return [...prev, data as FinalizedSuggestionRow];
+          }
+          const filtered = prev.filter((item) => item.option_type !== optionType);
+          return [...filtered, data as FinalizedSuggestionRow];
+        });
+      }
+    } catch (err) {
+      console.error('Error finalizing item:', err);
+    }
+  };
+
+  const unfinalizeItem = async (optionType: 'flight' | 'accommodation' | 'activity', optionId: string) => {
+    if (!user) return;
+    try {
+      const { error: unfinalizeError } = await supabase
+        .from('suggestion_finalized')
+        .delete()
+        .eq('trip_id', tripId)
+        .eq('option_type', optionType)
+        .eq('option_id', optionId);
+      if (unfinalizeError) throw unfinalizeError;
+      setFinalized((prev) =>
+        prev.filter((item) => !(item.option_type === optionType && item.option_id === optionId))
+      );
+    } catch (err) {
+      console.error('Error unfinalizing item:', err);
+    }
+  };
+
   const getAirlineDomain = (airline: string): string => {
     const airlineMap: Record<string, string> = {
       'TAP Air Portugal': 'flytap.com',
@@ -408,16 +480,16 @@ export default function SuggestionsPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen pb-8">
+      <div className="min-h-screen pb-8 bg-slate-50 dark:bg-slate-900">
         <div className="container mx-auto px-4 max-w-7xl">
-          <div className="h-12 bg-white/5 rounded-3xl w-64 mb-8 shimmer-loader"></div>
+          <div className="h-12 bg-slate-200 dark:bg-white/5 rounded-3xl w-64 mb-8 shimmer-loader"></div>
           <div className="grid grid-cols-3 gap-4 mb-8">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-12 bg-white/5 rounded-3xl shimmer-loader"></div>
+              <div key={i} className="h-12 bg-slate-200 dark:bg-white/5 rounded-3xl shimmer-loader"></div>
             ))}
           </div>
           <div className="glass-card p-12 text-center">
-            <div className="h-8 bg-white/5 rounded-3xl w-64 mx-auto shimmer-loader"></div>
+            <div className="h-8 bg-slate-200 dark:bg-white/5 rounded-3xl w-64 mx-auto shimmer-loader"></div>
           </div>
         </div>
       </div>
@@ -427,18 +499,20 @@ export default function SuggestionsPage() {
   // Empty state - no suggestions yet
   if (!suggestions && !generating) {
     return (
-      <div className="min-h-screen pb-8">
+      <div className="min-h-screen pb-8 bg-slate-50 dark:bg-slate-900">
         <div className="container mx-auto px-4 max-w-7xl">
           <div className="glass-card p-16 text-center">
-            <Sparkles className="w-16 h-16 text-purple-400 mx-auto mb-6 opacity-80" />
-            <h1 className="text-4xl font-bold text-white mb-10 tracking-tight">Generate Group Recommendations</h1>
-            <p className="text-slate-300 mb-8 max-w-2xl mx-auto">
+            <Sparkles className="w-16 h-16 text-purple-500 dark:text-purple-400 mx-auto mb-6 opacity-80" />
+            <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-10 tracking-tight">
+              Generate Group Recommendations
+            </h1>
+            <p className="text-slate-700 dark:text-slate-300 mb-8 max-w-2xl mx-auto">
               Get AI-powered suggestions for flights, accommodations, and activities based on your group's preferences
             </p>
             <button
               onClick={handleGenerate}
               disabled={generating}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-3xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 transition-all glass-card-hover disabled:opacity-50 disabled:cursor-not-allowed shadow-lg flex items-center gap-2 mx-auto"
+              className="bg-sky-200 text-slate-900 px-8 py-4 rounded-3xl font-semibold text-lg hover:bg-sky-300 transition-all glass-card-hover disabled:opacity-50 disabled:cursor-not-allowed shadow-lg flex items-center gap-2 mx-auto dark:bg-gradient-to-r dark:from-blue-600 dark:to-purple-600 dark:text-white dark:hover:from-blue-700 dark:hover:to-purple-700"
             >
               {generating ? (
                 <>
@@ -456,7 +530,7 @@ export default function SuggestionsPage() {
               )}
             </button>
             {error && (
-              <div className="mt-6 bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded-lg max-w-md mx-auto">
+              <div className="mt-6 bg-red-100 border border-red-200 text-red-700 px-4 py-3 rounded-lg max-w-md mx-auto dark:bg-red-900 dark:border-red-700 dark:text-red-100">
                 {error}
               </div>
             )}
@@ -493,20 +567,20 @@ export default function SuggestionsPage() {
   }) : null;
 
   return (
-    <div className="min-h-screen pb-8">
+    <div className="min-h-screen pb-8 bg-slate-50 dark:bg-slate-900">
       <div className="container mx-auto px-4 md:px-8 max-w-7xl">
-        <h1 className="text-4xl font-bold text-white mb-10 tracking-tight">Trip Suggestions</h1>
+        <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-10 tracking-tight">Trip Suggestions</h1>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-8 border-b border-white/10">
+        <div className="flex gap-2 mb-8 border-b border-slate-200 dark:border-white/10">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`px-6 py-3 font-semibold rounded-t-2xl transition-all relative ${
                 activeTab === tab.id
-                  ? 'text-white bg-slate-900/60 border-b-2 border-cyan-400'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                  ? 'text-slate-900 bg-sky-200 border-b-2 border-sky-300 dark:text-white dark:bg-slate-900/60 dark:border-blue-500'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-white/5'
               }`}
             >
               {tab.label} <span className="text-sm opacity-70">({tab.count})</span>
@@ -525,7 +599,7 @@ export default function SuggestionsPage() {
         </div>
 
         {error && (
-          <div className="glass-card border-red-500/50 bg-red-500/10 text-red-200 px-4 py-3 rounded-3xl mb-6">
+          <div className="glass-card border-red-200 bg-red-100 text-red-700 px-4 py-3 rounded-3xl mb-6 dark:border-red-500/50 dark:bg-red-500/10 dark:text-red-200">
             {error}
           </div>
         )}
@@ -571,13 +645,13 @@ export default function SuggestionsPage() {
                     {/* Origin -> Destination in single line */}
                     <div className="flex-1 flex items-center gap-4">
                       <div className="flex items-center gap-2">
-                        <div className="text-2xl font-bold text-white">{flight.departure.airport}</div>
-                        <div className="text-sm text-slate-400">{flight.departure.time}</div>
+                        <div className="text-2xl font-bold text-slate-900 dark:text-white">{flight.departure.airport}</div>
+                        <div className="text-sm text-slate-600 dark:text-slate-400">{flight.departure.time}</div>
                       </div>
                       <div className="text-slate-500">→</div>
                       <div className="flex items-center gap-2">
-                        <div className="text-2xl font-bold text-white">{flight.arrival.airport}</div>
-                        <div className="text-sm text-slate-400">{flight.arrival.time}</div>
+                        <div className="text-2xl font-bold text-slate-900 dark:text-white">{flight.arrival.airport}</div>
+                        <div className="text-sm text-slate-600 dark:text-slate-400">{flight.arrival.time}</div>
                       </div>
                     </div>
 
@@ -587,24 +661,24 @@ export default function SuggestionsPage() {
                       {(isCheapest || isFastest) && (
                         <div className="flex flex-col gap-2">
                           {isCheapest && (
-                            <span className="text-xs bg-emerald-500/20 text-emerald-300 px-3 py-1.5 rounded-full border border-emerald-500/30 font-medium">
+                            <span className="text-xs bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-full border border-emerald-200 font-medium dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30">
                               Cheapest
                             </span>
                           )}
                           {isFastest && (
-                            <span className="text-xs bg-blue-500/20 text-blue-300 px-3 py-1.5 rounded-full border border-blue-500/30 font-medium">
+                            <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded-full border border-blue-200 font-medium dark:bg-blue-500/20 dark:text-blue-300 dark:border-blue-500/30">
                               Fastest
                             </span>
                           )}
                           {isCheapest && isFastest && (
-                            <span className="text-xs bg-amber-500/20 text-amber-300 px-3 py-1.5 rounded-full border border-amber-500/30 font-medium">
+                            <span className="text-xs bg-amber-100 text-amber-700 px-3 py-1.5 rounded-full border border-amber-200 font-medium dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30">
                               Best Value
                             </span>
                           )}
                         </div>
                       )}
                       <div className="text-right">
-                        <div className="text-4xl font-black text-white">${flight.price}</div>
+                        <div className="text-4xl font-black text-slate-900 dark:text-white">${flight.price}</div>
                       </div>
                     </div>
                   </div>
@@ -614,12 +688,12 @@ export default function SuggestionsPage() {
                     <img
                       src={`https://logo.clearbit.com/${airlineDomain}`}
                       alt={flight.airline}
-                      className="h-12 w-12 rounded-lg bg-white/10 p-2"
+                      className="h-12 w-12 rounded-lg bg-slate-100 p-2 dark:bg-white/10"
                       onError={(e) => {
                         (e.target as HTMLImageElement).style.display = 'none';
                       }}
                     />
-                    <div className="text-sm text-slate-300">
+                    <div className="text-sm text-slate-700 dark:text-slate-300">
                       {flight.duration}
                       {flight.layovers > 0 && ` • ${flight.layovers} layover${flight.layovers > 1 ? 's' : ''} ${flight.layoverAirports.join(', ')}`}
                     </div>
@@ -627,7 +701,7 @@ export default function SuggestionsPage() {
 
                   {/* Bottom Row: Vote Count + Action Buttons */}
                   <div className="flex items-center justify-between gap-4">
-                    <div className="text-sm text-slate-400">
+                    <div className="text-sm text-slate-600 dark:text-slate-400">
                       {voteCount}/{membersCount} members approve
                     </div>
 
@@ -637,11 +711,11 @@ export default function SuggestionsPage() {
                         onClick={() => handleVote('flight', flight.id, true)}
                         className={`px-6 py-3 rounded-2xl font-semibold transition-all flex items-center gap-2 ${
                           userVote?.approved === true
-                            ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30'
-                            : 'bg-white/5 text-slate-300 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-teal-600 hover:text-white hover:shadow-lg hover:shadow-emerald-500/30 border border-white/10'
+                            ? 'bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-gradient-to-r dark:from-emerald-500 dark:to-teal-600 dark:text-white dark:shadow-lg dark:shadow-emerald-500/30'
+                            : 'bg-slate-100 text-slate-700 hover:bg-emerald-100 hover:text-emerald-700 border border-slate-200 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-gradient-to-r dark:hover:from-emerald-500 dark:hover:to-teal-600 dark:hover:text-white dark:hover:shadow-lg dark:hover:shadow-emerald-500/30 dark:border-white/10'
                         }`}
                       >
-                        <Check className={`w-5 h-5 ${userVote?.approved === true ? 'text-white' : 'text-emerald-400'}`} strokeWidth={2.5} />
+                        <Check className={`w-5 h-5 ${userVote?.approved === true ? 'text-emerald-700 dark:text-white' : 'text-emerald-600'}`} strokeWidth={2.5} />
                         Approve
                       </MagneticButton>
 
@@ -659,8 +733,8 @@ export default function SuggestionsPage() {
                         }}
                         className={`px-6 py-3 rounded-2xl font-semibold transition-all border ${
                           userVote?.approved === false
-                            ? 'bg-red-500/20 text-red-300 border-red-500/50'
-                            : 'bg-transparent text-red-400 border-red-500/50 hover:bg-red-500/20 hover:text-red-300'
+                            ? 'bg-red-100 text-red-700 border-red-200 dark:bg-red-500/20 dark:text-red-300 dark:border-red-500/50'
+                            : 'bg-transparent text-red-600 border-red-200 hover:bg-red-100 hover:text-red-700 dark:text-red-400 dark:border-red-500/50 dark:hover:bg-red-500/20 dark:hover:text-red-300'
                         }`}
                       >
                         Reject
@@ -687,14 +761,14 @@ export default function SuggestionsPage() {
                             [voteKey]: e.target.value,
                           }))
                         }
-                        className="w-full rounded-xl bg-slate-900/60 border border-white/10 text-slate-100 text-sm px-3 py-2"
+                        className="w-full rounded-xl bg-white border border-slate-200 text-slate-900 text-sm px-3 py-2 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-900/60 dark:border-white/10 dark:text-slate-100 dark:focus:ring-blue-500/50 dark:focus:border-blue-500/50"
                         placeholder="Why does this not work for you?"
                         maxLength={240}
                       />
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleVote('flight', flight.id, false)}
-                          className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold"
+                          className="px-3 py-1.5 rounded-lg bg-red-100 text-red-700 text-xs font-semibold hover:bg-red-200 dark:bg-red-600 dark:text-white"
                         >
                           Submit Rejection
                         </button>
@@ -705,7 +779,7 @@ export default function SuggestionsPage() {
                               [voteKey]: false,
                             }))
                           }
-                          className="px-3 py-1.5 rounded-lg bg-white/10 text-slate-200 text-xs font-semibold"
+                          className="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-semibold hover:bg-slate-200 dark:bg-white/10 dark:text-slate-200"
                         >
                           Cancel
                         </button>
@@ -714,7 +788,7 @@ export default function SuggestionsPage() {
                   )}
 
                   {userVote?.approved === false && userVote.reason && (
-                    <div className="mt-4 text-xs text-red-200 bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-2">
+                    <div className="mt-4 text-xs text-red-700 bg-red-100 border border-red-200 rounded-xl px-3 py-2 dark:text-red-200 dark:bg-red-500/10 dark:border-red-500/30">
                       Your rejection reason: {userVote.reason}
                     </div>
                   )}
@@ -723,9 +797,9 @@ export default function SuggestionsPage() {
                     .map((vote) => (
                       <div
                         key={vote.id}
-                        className="mt-2 text-xs text-slate-300 bg-white/5 border border-white/10 rounded-xl px-3 py-2"
+                        className="mt-2 text-xs text-slate-700 bg-slate-100 border border-slate-200 rounded-xl px-3 py-2 dark:text-slate-300 dark:bg-white/5 dark:border-white/10"
                       >
-                        <span className="font-semibold text-slate-200">{membersMap[vote.member_id] || 'Unknown'}'s rejection:</span> {vote.reason}
+                        <span className="font-semibold text-slate-900 dark:text-slate-200">{membersMap[vote.member_id] || 'Unknown'}'s rejection:</span> {vote.reason}
                       </div>
                     ))}
                 </motion.div>
@@ -755,7 +829,7 @@ export default function SuggestionsPage() {
                 >
                   {/* Name & Rating */}
                   <div className="mb-4">
-                    <h3 className="text-xl font-semibold text-white mb-2 tracking-tight">{accommodation.name}</h3>
+                    <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2 tracking-tight">{accommodation.name}</h3>
                     <div className="flex items-center gap-2 mb-2">
                       <div className="flex">
                         {[...Array(5)].map((_, i) => (
@@ -764,11 +838,11 @@ export default function SuggestionsPage() {
                           </span>
                         ))}
                       </div>
-                      <span className="text-sm text-slate-400">{accommodation.rating}</span>
+                      <span className="text-sm text-slate-600 dark:text-slate-400">{accommodation.rating}</span>
                     </div>
-                    <div className="text-2xl font-bold text-white">${accommodation.pricePerNight}/night</div>
-                    <div className="text-sm text-slate-400 mt-1">{accommodation.location}</div>
-                    <span className="inline-block mt-2 text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded">
+                    <div className="text-2xl font-bold text-slate-900 dark:text-white">${accommodation.pricePerNight}/night</div>
+                    <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">{accommodation.location}</div>
+                    <span className="inline-block mt-2 text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded border border-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:border-transparent">
                       {accommodation.type}
                     </span>
                   </div>
@@ -776,14 +850,14 @@ export default function SuggestionsPage() {
                   {/* Features */}
                   <div className="flex flex-wrap gap-2 mb-4">
                     {accommodation.features.slice(0, 5).map((feature) => (
-                      <span key={feature} className="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded">
+                      <span key={feature} className="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded border border-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:border-transparent">
                         {feature}
                       </span>
                     ))}
                   </div>
 
                   {/* Vote Count */}
-                  <div className="text-sm text-slate-400 mb-4">
+                  <div className="text-sm text-slate-600 dark:text-slate-400 mb-4">
                     {voteCount}/{membersCount} members approve
                   </div>
 
@@ -793,8 +867,8 @@ export default function SuggestionsPage() {
                       onClick={() => handleVote('accommodation', accommodation.id, true)}
                       className={`flex-1 px-4 py-2 rounded-xl font-semibold transition-all glass-card-hover ${
                         userVote?.approved === true
-                          ? 'bg-green-500/30 text-green-300 border border-green-500/50'
-                          : 'bg-white/5 text-slate-200 hover:bg-green-500/20 hover:text-green-300 border border-white/10'
+                          ? 'bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-green-500/30 dark:text-green-300 dark:border-green-500/50'
+                          : 'bg-slate-100 text-slate-700 hover:bg-emerald-100 hover:text-emerald-700 border border-slate-200 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-green-500/20 dark:hover:text-green-300 dark:border-white/10'
                       }`}
                     >
                       ✓ Approve
@@ -812,8 +886,8 @@ export default function SuggestionsPage() {
                       }}
                       className={`flex-1 px-4 py-2 rounded-xl font-semibold transition-all glass-card-hover ${
                         userVote?.approved === false
-                          ? 'bg-red-500/30 text-red-300 border border-red-500/50'
-                          : 'bg-white/5 text-slate-200 hover:bg-red-500/20 hover:text-red-300 border border-white/10'
+                          ? 'bg-red-100 text-red-700 border border-red-200 dark:bg-red-500/30 dark:text-red-300 dark:border-red-500/50'
+                          : 'bg-slate-100 text-slate-700 hover:bg-red-100 hover:text-red-700 border border-slate-200 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-red-500/20 dark:hover:text-red-300 dark:border-white/10'
                       }`}
                     >
                       ✗ Reject
@@ -822,7 +896,7 @@ export default function SuggestionsPage() {
                       href={accommodation.link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all glass-card-hover"
+                      className="px-4 py-2 bg-sky-200 text-slate-900 rounded-xl font-semibold hover:bg-sky-300 transition-all glass-card-hover dark:bg-gradient-to-r dark:from-blue-600 dark:to-purple-600 dark:text-white dark:hover:from-blue-700 dark:hover:to-purple-700"
                     >
                       Book
                     </a>
@@ -838,14 +912,14 @@ export default function SuggestionsPage() {
                             [voteKey]: e.target.value,
                           }))
                         }
-                        className="w-full rounded-xl bg-slate-900/60 border border-white/10 text-slate-100 text-sm px-3 py-2"
+                        className="w-full rounded-xl bg-white border border-slate-200 text-slate-900 text-sm px-3 py-2 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-900/60 dark:border-white/10 dark:text-slate-100 dark:focus:ring-blue-500/50 dark:focus:border-blue-500/50"
                         placeholder="Why does this not work for you?"
                         maxLength={240}
                       />
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleVote('accommodation', accommodation.id, false)}
-                          className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold"
+                          className="px-3 py-1.5 rounded-lg bg-red-100 text-red-700 text-xs font-semibold hover:bg-red-200 dark:bg-red-600 dark:text-white"
                         >
                           Submit Rejection
                         </button>
@@ -856,7 +930,7 @@ export default function SuggestionsPage() {
                               [voteKey]: false,
                             }))
                           }
-                          className="px-3 py-1.5 rounded-lg bg-white/10 text-slate-200 text-xs font-semibold"
+                          className="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-semibold hover:bg-slate-200 dark:bg-white/10 dark:text-slate-200"
                         >
                           Cancel
                         </button>
@@ -865,7 +939,7 @@ export default function SuggestionsPage() {
                   )}
 
                   {userVote?.approved === false && userVote.reason && (
-                    <div className="mt-4 text-xs text-red-200 bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-2">
+                    <div className="mt-4 text-xs text-red-700 bg-red-100 border border-red-200 rounded-xl px-3 py-2 dark:text-red-200 dark:bg-red-500/10 dark:border-red-500/30">
                       Your rejection reason: {userVote.reason}
                     </div>
                   )}
@@ -874,9 +948,9 @@ export default function SuggestionsPage() {
                     .map((vote) => (
                       <div
                         key={vote.id}
-                        className="mt-2 text-xs text-slate-300 bg-white/5 border border-white/10 rounded-xl px-3 py-2"
+                        className="mt-2 text-xs text-slate-700 bg-slate-100 border border-slate-200 rounded-xl px-3 py-2 dark:text-slate-300 dark:bg-white/5 dark:border-white/10"
                       >
-                        <span className="font-semibold text-slate-200">{membersMap[vote.member_id] || 'Unknown'}'s rejection:</span> {vote.reason}
+                        <span className="font-semibold text-slate-900 dark:text-slate-200">{membersMap[vote.member_id] || 'Unknown'}'s rejection:</span> {vote.reason}
                       </div>
                     ))}
                 </div>
@@ -905,18 +979,18 @@ export default function SuggestionsPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-xl font-semibold text-white tracking-tight">{activity.name}</h3>
-                        <span className="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded">
+                        <h3 className="text-xl font-semibold text-slate-900 dark:text-white tracking-tight">{activity.name}</h3>
+                        <span className="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded border border-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:border-transparent">
                           {activity.type}
                         </span>
                       </div>
-                      <p className="text-slate-300 mb-2">{activity.description}</p>
-                      <div className="flex items-center gap-4 text-sm text-slate-400">
+                      <p className="text-slate-700 dark:text-slate-300 mb-2">{activity.description}</p>
+                      <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
                         <span>⏱️ {activity.duration}</span>
                         <span>💰 ${activity.price === 0 ? 'Free' : activity.price}</span>
                         <span>📍 {activity.location}</span>
                       </div>
-                      <div className="text-sm text-slate-400 mt-3">
+                      <div className="text-sm text-slate-600 dark:text-slate-400 mt-3">
                         {voteCount}/{membersCount} members approve
                       </div>
                     </div>
@@ -926,8 +1000,8 @@ export default function SuggestionsPage() {
                         onClick={() => handleVote('activity', activity.id, true)}
                         className={`px-4 py-2 rounded-xl font-semibold transition-all glass-card-hover ${
                           userVote?.approved === true
-                            ? 'bg-green-500/30 text-green-300 border border-green-500/50'
-                            : 'bg-white/5 text-slate-200 hover:bg-green-500/20 hover:text-green-300 border border-white/10'
+                            ? 'bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-green-500/30 dark:text-green-300 dark:border-green-500/50'
+                            : 'bg-slate-100 text-slate-700 hover:bg-emerald-100 hover:text-emerald-700 border border-slate-200 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-green-500/20 dark:hover:text-green-300 dark:border-white/10'
                         }`}
                       >
                         ✓ Approve
@@ -945,8 +1019,8 @@ export default function SuggestionsPage() {
                         }}
                         className={`px-4 py-2 rounded-xl font-semibold transition-all glass-card-hover ${
                           userVote?.approved === false
-                            ? 'bg-red-500/30 text-red-300 border border-red-500/50'
-                            : 'bg-white/5 text-slate-200 hover:bg-red-500/20 hover:text-red-300 border border-white/10'
+                            ? 'bg-red-100 text-red-700 border border-red-200 dark:bg-red-500/30 dark:text-red-300 dark:border-red-500/50'
+                            : 'bg-slate-100 text-slate-700 hover:bg-red-100 hover:text-red-700 border border-slate-200 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-red-500/20 dark:hover:text-red-300 dark:border-white/10'
                         }`}
                       >
                         ✗ Reject
@@ -964,14 +1038,14 @@ export default function SuggestionsPage() {
                             [voteKey]: e.target.value,
                           }))
                         }
-                        className="w-full rounded-xl bg-slate-900/60 border border-white/10 text-slate-100 text-sm px-3 py-2"
+                        className="w-full rounded-xl bg-white border border-slate-200 text-slate-900 text-sm px-3 py-2 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-900/60 dark:border-white/10 dark:text-slate-100 dark:focus:ring-blue-500/50 dark:focus:border-blue-500/50"
                         placeholder="Why does this not work for you?"
                         maxLength={240}
                       />
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleVote('activity', activity.id, false)}
-                          className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold"
+                          className="px-3 py-1.5 rounded-lg bg-red-100 text-red-700 text-xs font-semibold hover:bg-red-200 dark:bg-red-600 dark:text-white"
                         >
                           Submit Rejection
                         </button>
@@ -982,7 +1056,7 @@ export default function SuggestionsPage() {
                               [voteKey]: false,
                             }))
                           }
-                          className="px-3 py-1.5 rounded-lg bg-white/10 text-slate-200 text-xs font-semibold"
+                          className="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-semibold hover:bg-slate-200 dark:bg-white/10 dark:text-slate-200"
                         >
                           Cancel
                         </button>
@@ -991,7 +1065,7 @@ export default function SuggestionsPage() {
                   )}
 
                   {userVote?.approved === false && userVote.reason && (
-                    <div className="mt-4 text-xs text-red-200 bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-2">
+                    <div className="mt-4 text-xs text-red-700 bg-red-100 border border-red-200 rounded-xl px-3 py-2 dark:text-red-200 dark:bg-red-500/10 dark:border-red-500/30">
                       Your rejection reason: {userVote.reason}
                     </div>
                   )}
@@ -1000,9 +1074,9 @@ export default function SuggestionsPage() {
                     .map((vote) => (
                       <div
                         key={vote.id}
-                        className="mt-2 text-xs text-slate-300 bg-white/5 border border-white/10 rounded-xl px-3 py-2"
+                        className="mt-2 text-xs text-slate-700 bg-slate-100 border border-slate-200 rounded-xl px-3 py-2 dark:text-slate-300 dark:bg-white/5 dark:border-white/10"
                       >
-                        <span className="font-semibold text-slate-200">{membersMap[vote.member_id] || 'Unknown'}'s rejection:</span> {vote.reason}
+                        <span className="font-semibold text-slate-900 dark:text-slate-200">{membersMap[vote.member_id] || 'Unknown'}'s rejection:</span> {vote.reason}
                       </div>
                     ))}
                 </div>
@@ -1015,7 +1089,7 @@ export default function SuggestionsPage() {
         {activeTab === 'itinerary' && (
           <div className="space-y-6">
             {membersCount === 0 && (
-              <div className="card-surface rounded-2xl p-6 text-slate-300">
+              <div className="card-surface rounded-2xl p-6 text-slate-700 dark:text-slate-300">
                 Trip members are still loading. Try again in a moment.
               </div>
             )}
@@ -1023,9 +1097,9 @@ export default function SuggestionsPage() {
             {membersCount > 0 && (
               <>
                 <div className="card-surface rounded-2xl p-6">
-                  <h2 className="text-xl font-semibold text-white mb-4 tracking-tight">✅ Approved Flights</h2>
+                  <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-4 tracking-tight">✅ Approved Flights</h2>
                   {flights.filter((f) => isApprovedByAll('flight', f.id)).length === 0 ? (
-                    <p className="text-slate-400">No flights approved by everyone yet.</p>
+                    <p className="text-slate-600 dark:text-slate-400">No flights approved by everyone yet.</p>
                   ) : (
                     <div className="space-y-3">
                       {flights
@@ -1033,25 +1107,23 @@ export default function SuggestionsPage() {
                         .map((flight) => (
                           <div
                             key={flight.id}
-                            className="p-4 rounded-xl bg-slate-800 border border-slate-700"
+                            className="p-4 rounded-xl bg-slate-100 border border-slate-200 dark:bg-slate-800 dark:border-slate-700"
                           >
                             <div className="flex justify-between items-center mb-2">
-                              <div className="text-white font-semibold">{flight.airline}</div>
-                              <div className="text-slate-200 font-semibold">${flight.price}</div>
+                              <div className="text-slate-900 dark:text-white font-semibold">{flight.airline}</div>
+                              <div className="text-slate-700 dark:text-slate-200 font-semibold">${flight.price}</div>
                             </div>
-                            <div className="text-sm text-slate-300">
+                            <div className="text-sm text-slate-600 dark:text-slate-300">
                               {flight.departure.airport} → {flight.arrival.airport} • {flight.duration}
                             </div>
                           </div>
-                        ))}
-                    </div>
-                  )}
-                </div>
+                        )}
+                      </div>
 
                 <div className="card-surface rounded-2xl p-6">
-                  <h2 className="text-xl font-semibold text-white mb-4 tracking-tight">✅ Approved Stays</h2>
+                  <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-4 tracking-tight">✅ Approved Stays</h2>
                   {accommodations.filter((a) => isApprovedByAll('accommodation', a.id)).length === 0 ? (
-                    <p className="text-slate-400">No stays approved by everyone yet.</p>
+                    <p className="text-slate-600 dark:text-slate-400">No stays approved by everyone yet.</p>
                   ) : (
                     <div className="space-y-3">
                       {accommodations
@@ -1059,27 +1131,25 @@ export default function SuggestionsPage() {
                         .map((accommodation) => (
                           <div
                             key={accommodation.id}
-                            className="p-4 rounded-xl bg-slate-800 border border-slate-700"
+                            className="p-4 rounded-xl bg-slate-100 border border-slate-200 dark:bg-slate-800 dark:border-slate-700"
                           >
                             <div className="flex justify-between items-center mb-2">
-                              <div className="text-slate-50 font-semibold">{accommodation.name}</div>
-                              <div className="text-slate-200 font-semibold">
+                              <div className="text-slate-900 dark:text-slate-50 font-semibold">{accommodation.name}</div>
+                              <div className="text-slate-700 dark:text-slate-200 font-semibold">
                                 ${accommodation.pricePerNight}/night
                               </div>
                             </div>
-                            <div className="text-sm text-slate-300">
+                            <div className="text-sm text-slate-600 dark:text-slate-300">
                               {accommodation.type} • {accommodation.location}
                             </div>
                           </div>
-                        ))}
-                    </div>
-                  )}
-                </div>
+                        )}
+                      </div>
 
                 <div className="card-surface rounded-2xl p-6">
-                  <h2 className="text-xl font-semibold text-slate-50 mb-4">✅ Approved Activities</h2>
+                  <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50 mb-4">✅ Approved Activities</h2>
                   {activities.filter((a) => isApprovedByAll('activity', a.id)).length === 0 ? (
-                    <p className="text-slate-400">No activities approved by everyone yet.</p>
+                    <p className="text-slate-600 dark:text-slate-400">No activities approved by everyone yet.</p>
                   ) : (
                     <div className="space-y-3">
                       {activities
@@ -1087,22 +1157,23 @@ export default function SuggestionsPage() {
                         .map((activity) => (
                           <div
                             key={activity.id}
-                            className="p-4 rounded-xl bg-slate-800 border border-slate-700"
+                            className="p-4 rounded-xl bg-slate-100 border border-slate-200 dark:bg-slate-800 dark:border-slate-700"
                           >
                             <div className="flex justify-between items-center mb-2">
-                              <div className="text-slate-50 font-semibold">{activity.name}</div>
-                              <div className="text-slate-200 font-semibold">
+                              <div className="text-slate-900 dark:text-slate-50 font-semibold">{activity.name}</div>
+                              <div className="text-slate-700 dark:text-slate-200 font-semibold">
                                 {activity.price === 0 ? 'Free' : `$${activity.price}`}
                               </div>
                             </div>
-                            <div className="text-sm text-slate-300">
+                            <div className="text-sm text-slate-600 dark:text-slate-300">
                               {activity.type} • {activity.location}
                             </div>
                           </div>
-                        ))}
-                    </div>
-                  )}
-                </div>
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
               </>
             )}
           </div>

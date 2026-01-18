@@ -1561,7 +1561,7 @@ export default function TripDetailPage() {
 
         {/* Invite Card */}
         <div className="glass-card p-6">
-          <h3 className="text-xl font-semibold mb-4 text-white flex items-center gap-2 tracking-tight">
+          <h3 className="text-xl font-semibold mb-4 text-slate-900 dark:text-white flex items-center gap-2 tracking-tight">
             <Share2 className="w-5 h-5 text-blue-400 opacity-80" />
             Invite Friends
           </h3>
@@ -1571,22 +1571,22 @@ export default function TripDetailPage() {
                 type="text"
                 readOnly
                 value={trip.invite_code}
-                      className="flex-1 px-4 py-3 border border-white/20 rounded-2xl bg-slate-900/60 backdrop-blur-xl font-mono text-sm font-bold text-center text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                className="flex-1 px-4 py-3 border border-slate-200 dark:border-white/20 rounded-2xl bg-white dark:bg-slate-900/60 backdrop-blur-xl font-mono text-sm font-bold text-center text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-300/60 dark:focus:ring-blue-500/50"
               />
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(trip.invite_code);
                 }}
-                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-2xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all glass-card-hover"
+                className="px-6 py-3 bg-sky-200 text-slate-900 rounded-2xl font-semibold hover:bg-sky-300 transition-all dark:bg-gradient-to-r dark:from-blue-600 dark:to-purple-600 dark:text-white dark:hover:from-blue-700 dark:hover:to-purple-700"
               >
                 Copy
               </button>
             </div>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-600 dark:text-slate-400">
               Share this code or{' '}
               <a
                 href={inviteLink}
-                className="text-blue-400 hover:underline"
+                className="text-blue-600 hover:underline dark:text-blue-400"
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -2191,13 +2191,13 @@ function ModuleCard({
   const getStatusColor = () => {
     switch (status) {
       case 'Awaiting Preferences':
-        return 'text-amber-400';
+        return 'text-slate-600 dark:text-slate-400';
       case 'Ready to Generate':
-        return 'text-emerald-400';
+        return 'text-green-600 dark:text-green-400';
       case 'Locked':
-        return 'text-red-400';
+        return 'text-red-600 dark:text-red-400';
       default:
-        return 'text-slate-400';
+        return 'text-slate-600 dark:text-slate-400';
     }
   };
 
@@ -2241,10 +2241,10 @@ function ModuleCard({
     >
       <Link
         href={href}
-        className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-3xl p-6 flex flex-col hover:border-white/20 hover:shadow-lg hover:shadow-blue-500/10 transition-all h-full group"
+        className="card-surface border border-slate-200 dark:border-white/20 rounded-3xl p-6 flex flex-col hover:bg-slate-100 dark:hover:bg-slate-900/70 transition-all h-full"
       >
-        <Icon className={`w-8 h-8 mb-3 ${getIconColor()}`} />
-        <h3 className="text-lg font-black mb-3 text-white tracking-tighter">{title}</h3>
+        <Icon className="w-8 h-8 text-blue-400 opacity-80 mb-3" />
+        <h3 className="text-lg font-semibold mb-3 text-slate-900 dark:text-white tracking-tight">{title}</h3>
         <div className="flex items-center gap-2 mt-auto">
           <span className={`text-lg ${getStatusColor()}`}>{getStatusIcon()}</span>
           <span className={`text-sm font-medium ${getStatusColor()}`}>

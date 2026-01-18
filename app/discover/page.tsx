@@ -239,14 +239,14 @@ export default function DiscoverPage() {
   };
 
   return (
-    <div className="min-h-screen pb-8">
+    <div className="min-h-screen pb-8 bg-slate-50 dark:bg-slate-900">
       <div className="container mx-auto px-4 md:px-8 max-w-7xl">
         {/* Page Title - Editorial Style */}
         <div className="mb-10">
-          <h1 className="text-6xl md:text-7xl font-black text-white tracking-tighter mb-4 leading-none">
+          <h1 className="text-6xl md:text-7xl font-black text-slate-900 dark:text-white tracking-tighter mb-4 leading-none">
             DISCOVER
           </h1>
-          <p className="text-slate-300 text-lg">Explore trending destinations and plan your next adventure</p>
+          <p className="text-slate-700 dark:text-slate-300 text-lg">Explore trending destinations and plan your next adventure</p>
         </div>
 
         {/* Vibe Filters */}
@@ -262,7 +262,7 @@ export default function DiscoverPage() {
                 className={`px-6 py-3 rounded-full font-semibold text-sm transition-all flex items-center gap-2 ${
                   selectedVibe === filter.id
                     ? 'bg-gradient-to-r from-indigo-600 to-violet-700 text-white shadow-lg shadow-indigo-600/50'
-                    : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/20'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10 dark:border-white/20'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -320,7 +320,7 @@ export default function DiscoverPage() {
             }
           }}
         >
-          <div className="relative w-full h-[500px] rounded-3xl overflow-hidden bg-white/5 backdrop-blur-2xl border border-white/20">
+          <div className="relative w-full h-[500px] rounded-3xl overflow-hidden bg-white/70 dark:bg-white/5 backdrop-blur-2xl border border-slate-200 dark:border-white/20">
             {/* Map Background */}
             <div
               className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-40"
@@ -389,16 +389,16 @@ export default function DiscoverPage() {
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
-                className="fixed bg-white/5 backdrop-blur-2xl border border-white/20 rounded-2xl p-4 shadow-2xl z-50 pointer-events-none whitespace-nowrap"
+                className="fixed bg-white/80 dark:bg-white/5 backdrop-blur-2xl border border-slate-200 dark:border-white/20 rounded-2xl p-4 shadow-2xl z-50 pointer-events-none whitespace-nowrap"
                 style={{
                   left: `${poiPreview.x + 20}px`,
                   top: `${poiPreview.y - 80}px`,
                 }}
               >
-                <p className="text-white font-semibold text-sm mb-1">
+                <p className="text-slate-900 dark:text-white font-semibold text-sm mb-1">
                   {trendingDestinations.find(d => d.id === poiPreview.id)?.name}
                 </p>
-                <p className="text-slate-300 text-xs">
+                <p className="text-slate-600 dark:text-slate-300 text-xs">
                   {vibeDescriptions[poiPreview.id] || 'Explore this destination'}
                 </p>
               </motion.div>
@@ -408,7 +408,7 @@ export default function DiscoverPage() {
 
         {/* Trending Destinations Masonry/Bento Grid */}
         <div className="mb-12">
-          <h2 className="text-3xl font-bold text-white tracking-tight mb-6">Trending Destinations</h2>
+          <h2 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight mb-6">Trending Destinations</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredDestinations.map((dest, index) => (
               <motion.div
@@ -439,7 +439,7 @@ export default function DiscoverPage() {
                       onClick={(e) => toggleHeart(dest.id, e)}
                       whileHover={{ scale: 1.2 }}
                       whileTap={{ scale: 0.9 }}
-                      className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-all backdrop-blur-sm"
+                    className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-all backdrop-blur-sm"
                     >
                       <Heart
                         className={`w-5 h-5 transition-colors ${
@@ -467,11 +467,11 @@ export default function DiscoverPage() {
         {/* Group Wishlist Section */}
         {user && (
           <div className="glass-card rounded-3xl p-6">
-            <h2 className="text-2xl font-bold text-white tracking-tight mb-4">Group Wishlist</h2>
-            <p className="text-slate-300 text-sm mb-4">
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight mb-4">Group Wishlist</h2>
+            <p className="text-slate-700 dark:text-slate-300 text-sm mb-4">
               Destinations you and your travel groups want to visit together
             </p>
-            <div className="text-slate-400 text-sm">Coming soon...</div>
+            <div className="text-slate-600 dark:text-slate-400 text-sm">Coming soon...</div>
           </div>
         )}
       </div>

@@ -143,35 +143,35 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="text-slate-200">Loading...</div>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
+        <div className="text-slate-700 dark:text-slate-200">Loading...</div>
       </div>
     );
   }
 
   if (!trip) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-slate-50 mb-4">Trip not found</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50 mb-4">Trip not found</h1>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 py-8">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 py-8">
       <div className="container mx-auto px-4 max-w-4xl">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-slate-50">Profile & Preferences</h1>
-          <p className="text-slate-300 mt-2">
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-50">Profile & Preferences</h1>
+          <p className="text-slate-700 dark:text-slate-300 mt-2">
             {trip.destination.city}, {trip.destination.country}
           </p>
         </div>
 
         {/* User Selection */}
         <div className="card-surface rounded-lg p-6 mb-6">
-          <h2 className="text-xl font-semibold text-slate-50 mb-4">Select Profile</h2>
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50 mb-4">Select Profile</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {trip.members.map(member => (
               <button
@@ -180,7 +180,7 @@ export default function ProfilePage() {
                 className={`px-4 py-3 rounded-lg font-semibold transition-colors ${
                   selectedUserId === member.id
                     ? 'bg-blue-600 text-white'
-                    : 'bg-slate-700 text-slate-200 hover:bg-slate-600'
+                    : 'bg-slate-100 text-slate-900 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600'
                 }`}
               >
                 {member.name}
@@ -193,7 +193,7 @@ export default function ProfilePage() {
           <div className="space-y-6">
             {/* Budgets */}
             <div className="card-surface rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-slate-50 mb-4">💰 Budgets (USD)</h2>
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50 mb-4">💰 Budgets (USD)</h2>
               
               <div className="space-y-4">
                 <div>
@@ -211,7 +211,7 @@ export default function ProfilePage() {
                           max: preferences.flightBudget?.max || 0,
                         },
                       })}
-                      className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-50 dark:focus:ring-blue-500 dark:focus:border-blue-500"
                       placeholder="Min"
                       min="0"
                     />
@@ -225,7 +225,7 @@ export default function ProfilePage() {
                           max: parseFloat(e.target.value) || 0,
                         },
                       })}
-                      className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-50 dark:focus:ring-blue-500 dark:focus:border-blue-500"
                       placeholder="Max"
                       min="0"
                     />
@@ -247,7 +247,7 @@ export default function ProfilePage() {
                           max: preferences.accommodationBudget?.max || 0,
                         },
                       })}
-                      className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-50 dark:focus:ring-blue-500 dark:focus:border-blue-500"
                       placeholder="Min"
                       min="0"
                     />
@@ -261,7 +261,7 @@ export default function ProfilePage() {
                           max: parseFloat(e.target.value) || 0,
                         },
                       })}
-                      className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-50 dark:focus:ring-blue-500 dark:focus:border-blue-500"
                       placeholder="Max"
                       min="0"
                     />
@@ -283,7 +283,7 @@ export default function ProfilePage() {
                           max: preferences.activityBudget?.max || 0,
                         },
                       })}
-                      className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-50 dark:focus:ring-blue-500 dark:focus:border-blue-500"
                       placeholder="Min"
                       min="0"
                     />
@@ -297,7 +297,7 @@ export default function ProfilePage() {
                           max: parseFloat(e.target.value) || 0,
                         },
                       })}
-                      className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-50 dark:focus:ring-blue-500 dark:focus:border-blue-500"
                       placeholder="Max"
                       min="0"
                     />
@@ -308,7 +308,7 @@ export default function ProfilePage() {
 
             {/* Housing Non-Negotiables */}
             <div className="card-surface rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-slate-50 mb-4">🏨 Housing Non-Negotiables</h2>
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50 mb-4">🏨 Housing Non-Negotiables</h2>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {housingOptions.map(option => (
                   <label key={option} className="flex items-center space-x-2 cursor-pointer">
@@ -320,7 +320,7 @@ export default function ProfilePage() {
                         option,
                         (arr) => setPreferences({ ...preferences, housingNonNegotiables: arr })
                       )}
-                      className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                      className="w-4 h-4 rounded border-slate-300 bg-white text-blue-600 focus:ring-2 focus:ring-sky-300/60 dark:border-slate-600 dark:bg-slate-700 dark:focus:ring-blue-500"
                     />
                     <span className="text-slate-200">{option}</span>
                   </label>
@@ -330,7 +330,7 @@ export default function ProfilePage() {
 
             {/* Flight Non-Negotiables */}
             <div className="card-surface rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-slate-50 mb-4">✈️ Flight Non-Negotiables</h2>
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50 mb-4">✈️ Flight Non-Negotiables</h2>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {flightOptions.map(option => (
                   <label key={option} className="flex items-center space-x-2 cursor-pointer">
@@ -342,7 +342,7 @@ export default function ProfilePage() {
                         option,
                         (arr) => setPreferences({ ...preferences, flightNonNegotiables: arr })
                       )}
-                      className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                      className="w-4 h-4 rounded border-slate-300 bg-white text-blue-600 focus:ring-2 focus:ring-sky-300/60 dark:border-slate-600 dark:bg-slate-700 dark:focus:ring-blue-500"
                     />
                     <span className="text-slate-200">{option}</span>
                   </label>
@@ -352,7 +352,7 @@ export default function ProfilePage() {
 
             {/* Dietary Restrictions */}
             <div className="card-surface rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-slate-50 mb-4">🍽️ Dietary Restrictions</h2>
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50 mb-4">🍽️ Dietary Restrictions</h2>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {dietaryOptions.map(option => (
                   <label key={option} className="flex items-center space-x-2 cursor-pointer">
@@ -364,7 +364,7 @@ export default function ProfilePage() {
                         option,
                         (arr) => setPreferences({ ...preferences, dietaryRestrictions: arr })
                       )}
-                      className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                      className="w-4 h-4 rounded border-slate-300 bg-white text-blue-600 focus:ring-2 focus:ring-sky-300/60 dark:border-slate-600 dark:bg-slate-700 dark:focus:ring-blue-500"
                     />
                     <span className="text-slate-200">{option}</span>
                   </label>
@@ -374,11 +374,11 @@ export default function ProfilePage() {
 
             {/* Notes */}
             <div className="card-surface rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-slate-50 mb-4">📝 Notes</h2>
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50 mb-4">📝 Notes</h2>
               <textarea
                 value={preferences.notes || ''}
                 onChange={(e) => setPreferences({ ...preferences, notes: e.target.value })}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[120px]"
+              className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 min-h-[120px] dark:bg-slate-700 dark:border-slate-600 dark:text-slate-50 dark:focus:ring-blue-500 dark:focus:border-blue-500"
                 placeholder="Any additional preferences or notes..."
               />
             </div>
