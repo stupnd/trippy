@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { trip_id } = body;
+    const { trip_id, rejection_context } = body;
 
     if (!trip_id) {
       return NextResponse.json(
@@ -163,7 +163,10 @@ export async function POST(request: NextRequest) {
       originAirports.length > 0 ? originAirports : ['Not specified'];
 
     // Construct the prompt for Gemini - handle missing trip data
-    const prompt = `You are an expert travel coordinator. Based on the following group preferences for a trip to ${destination}, suggest 5 flights, 5 accommodations, and 10 activities.
+    const rejectionNotes = rejection_context
+      ? `\nRejection feedback (use this to improve new options):\n${rejection_context}`
+      : '';
+    const prompt = `You are an expert travel coordinator. Based on the following group preferences for a trip to ${destination}, suggest 5 flights, 5 accommodations, and 10 activities.${rejectionNotes}
 
 Trip Details:
 - Destination: ${destination}
@@ -319,6 +322,29 @@ Important:
           message: 'Response missing required fields (flights, accommodations, activities)',
           suggestions,
         },
+        { status: 500 }
+      );
+    }
+
+    // Persist suggestions
+    const { error: suggestionsError } = await supabase
+      .from('trip_suggestions')
+      .upsert(
+        {
+          trip_id,
+          flights: suggestions.flights,
+          accommodations: suggestions.accommodations,
+          activities: suggestions.activities,
+          generated_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'trip_id' }
+      );
+
+    if (suggestionsError) {
+      console.error('Error saving trip suggestions:', suggestionsError);
+      return NextResponse.json(
+        { error: 'Failed to save suggestions' },
         { status: 500 }
       );
     }

@@ -218,46 +218,36 @@ export default function PreferencesPage() {
       if (membersError) throw membersError;
 
       const membersCount = membersData?.length || 0;
-      const suggestionsRaw =
-        typeof window !== 'undefined' ? localStorage.getItem(`suggestions_${tripId}`) : null;
-      const votesRaw =
-        typeof window !== 'undefined' ? localStorage.getItem(`votes_${tripId}`) : null;
+      const { data: suggestionsRow } = await supabase
+        .from('trip_suggestions')
+        .select('flights, accommodations, activities')
+        .eq('trip_id', tripId)
+        .maybeSingle();
 
-      let suggestions;
-      if (suggestionsRaw) {
-        try {
-          suggestions = JSON.parse(suggestionsRaw);
-        } catch {
-          suggestions = null;
-        }
-      }
+      const { data: votesData } = await supabase
+        .from('suggestion_votes')
+        .select('option_type, option_id, approved')
+        .eq('trip_id', tripId);
 
-      let votes: Record<string, Record<string, boolean>> = {};
-      if (votesRaw) {
-        try {
-          votes = JSON.parse(votesRaw);
-        } catch {
-          votes = {};
-        }
-      }
+      const votesByKey: Record<string, number> = {};
+      (votesData || []).forEach((vote) => {
+        if (!vote.approved) return;
+        const key = `${vote.option_type}_${vote.option_id}`;
+        votesByKey[key] = (votesByKey[key] || 0) + 1;
+      });
 
-      const voteCountFor = (key: string) => {
-        const optionVotes = votes[key] || {};
-        return Object.values(optionVotes).filter(Boolean).length;
-      };
-
-      const flights = suggestions?.suggestions?.flights || [];
-      const accommodations = suggestions?.suggestions?.accommodations || [];
-      const activities = suggestions?.suggestions?.activities || [];
+      const flights = suggestionsRow?.flights || [];
+      const accommodations = suggestionsRow?.accommodations || [];
+      const activities = suggestionsRow?.activities || [];
 
       const approvedFlights = flights.filter(
-        (item: any) => voteCountFor(`flight_${item.id}`) === membersCount
+        (item: any) => votesByKey[`flight_${item.id}`] === membersCount
       );
       const approvedStays = accommodations.filter(
-        (item: any) => voteCountFor(`accommodation_${item.id}`) === membersCount
+        (item: any) => votesByKey[`accommodation_${item.id}`] === membersCount
       );
       const approvedActivities = activities.filter(
-        (item: any) => voteCountFor(`activity_${item.id}`) === membersCount
+        (item: any) => votesByKey[`activity_${item.id}`] === membersCount
       );
 
       await fetch('/api/generate-trip-summary', {

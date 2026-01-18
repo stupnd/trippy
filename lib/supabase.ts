@@ -40,6 +40,26 @@ export interface JoinRequestRow {
   created_at: string;
 }
 
+export interface TripSuggestionsRow {
+  trip_id: string;
+  flights: any[];
+  accommodations: any[];
+  activities: any[];
+  generated_at: string;
+  updated_at: string;
+}
+
+export interface SuggestionVoteRow {
+  id: string;
+  trip_id: string;
+  member_id: string;
+  option_type: 'flight' | 'accommodation' | 'activity';
+  option_id: string;
+  approved: boolean;
+  reason?: string | null;
+  created_at: string;
+}
+
 export interface TripMemberRow {
   id: string; // Primary key (auto-generated UUID)
   trip_id: string;
