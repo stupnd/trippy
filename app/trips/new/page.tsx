@@ -95,6 +95,8 @@ export default function NewTripPage() {
           timezone: formData.timezone,
           invite_code: inviteCode,
           created_by: user.id, // Use auth.uid()
+          status: 'planning',
+          is_public: false,
         });
 
       if (tripError) {
