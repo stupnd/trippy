@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { generateInviteCode } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth';
 
 export default function NewTripPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -21,6 +22,20 @@ export default function NewTripPage() {
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     userName: '',
   });
+
+  // Prefill destination from query params
+  useEffect(() => {
+    const destination = searchParams?.get('destination');
+    if (destination) {
+      // Try to parse "City, Country" or just "City"
+      const parts = destination.split(',').map(s => s.trim());
+      if (parts.length === 2) {
+        setFormData(prev => ({ ...prev, city: parts[0], country: parts[1] }));
+      } else {
+        setFormData(prev => ({ ...prev, city: parts[0] }));
+      }
+    }
+  }, [searchParams]);
 
   // Redirect to auth if not logged in
   useEffect(() => {

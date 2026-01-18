@@ -12,6 +12,7 @@ import { TripRow, TripMemberRow } from '@/lib/supabase';
 
 interface MemberWithStatus extends TripMemberRow {
   hasPreferences: boolean;
+  avatar_url?: string | null;
 }
 
 type ModuleStatus = 'Awaiting Preferences' | 'Ready to Generate' | 'Locked';
@@ -93,11 +94,30 @@ export default function TripDetailPage() {
         (preferencesData || []).map((p) => p.member_id)
       );
 
+      // Fetch profile avatars for all members
+      const memberUserIds = (membersData || []).map(m => (m as any).user_id).filter(Boolean);
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, avatar_url')
+        .in('id', memberUserIds.length > 0 ? memberUserIds : ['']); // Empty array will return nothing, but prevents error
+
+      // Create a map of user_id -> avatar_url
+      const avatarMap = new Map<string, string | null>();
+      (profilesData || []).forEach(profile => {
+        if (profile.id) {
+          avatarMap.set(profile.id, profile.avatar_url || null);
+        }
+      });
+
       const membersWithStatus: MemberWithStatus[] = (membersData || []).map(
-        (member) => ({
-          ...member,
-          hasPreferences: membersWithPreferences.has(member.id),
-        })
+        (member) => {
+          const userId = (member as any).user_id;
+          return {
+            ...member,
+            hasPreferences: membersWithPreferences.has(member.id),
+            avatar_url: userId ? avatarMap.get(userId) || null : null,
+          };
+        }
       );
 
       setMembers(membersWithStatus);
@@ -707,11 +727,19 @@ export default function TripDetailPage() {
                       initial={{ opacity: 0, scale: 0 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.3, delay: index * 0.1 }}
-                      className={`relative w-12 h-12 ${colorClass} rounded-full flex items-center justify-center text-white font-bold text-sm border-2 border-white/20 ${
+                      className={`relative w-12 h-12 ${colorClass} rounded-full flex items-center justify-center text-white font-bold text-sm border-2 border-white/20 overflow-hidden ${
                         !member.hasPreferences ? 'animate-pulse' : ''
                       }`}
                     >
-                      {initials}
+                      {member.avatar_url ? (
+                        <img
+                          src={member.avatar_url}
+                          alt={member.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        initials
+                      )}
                       
                       {/* Pulsing ring for "Live" members */}
                       {member.hasPreferences && (
@@ -1032,10 +1060,18 @@ export default function TripDetailPage() {
                     >
                       {/* Avatar */}
                       <div className="relative">
-                        <div className={`w-14 h-14 ${colorClass} rounded-full flex items-center justify-center text-white font-bold text-base border-2 border-white/20 ${
+                        <div className={`w-14 h-14 ${colorClass} rounded-full flex items-center justify-center text-white font-bold text-base border-2 border-white/20 overflow-hidden ${
                           !member.hasPreferences ? 'animate-pulse' : ''
                         }`}>
-                          {initials}
+                          {member.avatar_url ? (
+                            <img
+                              src={member.avatar_url}
+                              alt={member.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            initials
+                          )}
                         </div>
                         
                         {/* Live indicator ring */}
@@ -1362,7 +1398,7 @@ function DrawerChat({ tripId, members }: { tripId: string; members: MemberWithSt
           messages.map((message) => {
             const isMine = isMyMessage(message);
             const senderColor = getMemberColor(message.member_id);
-            const senderIndex = members.findIndex(m => m.id === message.member_id || m.user_id === message.member_id);
+            const senderMember = members.find(m => m.id === message.member_id || m.user_id === message.member_id);
             const senderInitials = message.sender_name
               ?.split(' ')
               .map((n: string) => n[0])
@@ -1382,8 +1418,16 @@ function DrawerChat({ tripId, members }: { tripId: string; members: MemberWithSt
                   {/* Sender name */}
                   <div className={`flex items-center gap-2 mb-1 ${isMine ? 'flex-row-reverse' : ''}`}>
                     {!isMine && (
-                      <div className={`w-6 h-6 ${senderColor} rounded-full flex items-center justify-center text-white text-xs font-bold border border-white/20`}>
-                        {senderInitials}
+                      <div className={`w-6 h-6 ${senderColor} rounded-full flex items-center justify-center text-white text-xs font-bold border border-white/20 overflow-hidden`}>
+                        {senderMember?.avatar_url ? (
+                          <img
+                            src={senderMember.avatar_url}
+                            alt={message.sender_name || 'User'}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          senderInitials
+                        )}
                       </div>
                     )}
                     <span className="text-xs text-slate-400">{message.sender_name}</span>

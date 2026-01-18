@@ -6,12 +6,14 @@ import { usePathname, useRouter } from 'next/navigation';
 import { motion, useMotionValue, useSpring } from 'framer-motion';
 import { LogOut, User, Settings, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
 
 export default function GlobalNavbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, signOut } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Interactive logo glow
@@ -48,6 +50,54 @@ export default function GlobalNavbar() {
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, [logoHover, mouseX, mouseY]);
+
+  // Fetch user avatar
+  useEffect(() => {
+    if (!user) {
+      setAvatarUrl(null);
+      return;
+    }
+
+    const fetchAvatar = async () => {
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('avatar_url')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        setAvatarUrl(data?.avatar_url || null);
+      } catch (error) {
+        console.error('Error fetching avatar:', error);
+      }
+    };
+
+    fetchAvatar();
+
+    // Subscribe to profile changes
+    const channel = supabase
+      .channel('profile-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`,
+        },
+        (payload) => {
+          const newAvatar = (payload.new as any)?.avatar_url;
+          if (newAvatar !== undefined) {
+            setAvatarUrl(newAvatar);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   // Get user initials for avatar
   const userInitials = user?.email
@@ -127,9 +177,17 @@ export default function GlobalNavbar() {
                 onClick={() => setDropdownOpen(!dropdownOpen)}
                 className="flex items-center gap-2 glass-card px-3 py-2 rounded-xl hover:bg-white/10 transition-all"
               >
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-xs">
-                  {userInitials}
-                </div>
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={userInitials}
+                    className="w-8 h-8 rounded-full object-cover border-2 border-white/20"
+                  />
+                ) : (
+                  <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-xs">
+                    {userInitials}
+                  </div>
+                )}
                 <ChevronDown className={`w-4 h-4 text-slate-300 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
               </button>
 
