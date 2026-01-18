@@ -111,23 +111,23 @@ export default function Home() {
       <div className="min-h-screen py-16">
         <div className="container mx-auto px-4 md:px-8 max-w-7xl">
           <div className="max-w-2xl mx-auto text-center">
-            <h1 className="text-6xl font-bold text-slate-50 mb-4">
+            <h1 className="text-6xl font-bold text-slate-900 dark:text-slate-50 mb-4">
               Trippy
             </h1>
-            <p className="text-xl text-slate-300 mb-12">
+            <p className="text-xl text-slate-700 dark:text-slate-300 mb-12">
               Plan your next adventure together with your group
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
                 href="/auth"
-                className="bg-blue-600 text-white px-8 py-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-lg"
+                className="bg-sky-200 text-slate-900 px-8 py-4 rounded-lg font-semibold hover:bg-sky-300 transition-colors shadow-lg dark:bg-blue-600 dark:text-white dark:hover:bg-blue-700"
               >
                 Sign In to Get Started
               </Link>
               <Link
                 href="/trips/join"
-                className="card-surface text-slate-50 px-8 py-4 rounded-lg font-semibold hover:bg-slate-700 transition-colors shadow-lg border-2 border-slate-600"
+                className="bg-sky-100 text-slate-900 px-8 py-4 rounded-lg font-semibold hover:bg-sky-200 transition-colors shadow-lg border border-sky-200 dark:card-surface dark:text-slate-50 dark:hover:bg-slate-700 dark:border-slate-600"
               >
                 Join a Trip
               </Link>
@@ -135,20 +135,20 @@ export default function Home() {
 
             <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
               <div className="card-surface p-6 rounded-lg shadow">
-                <h3 className="text-xl font-semibold mb-2 text-slate-50">📅 Plan Together</h3>
-                <p className="text-slate-300">
+                <h3 className="text-xl font-semibold mb-2 text-slate-900 dark:text-slate-50">📅 Plan Together</h3>
+                <p className="text-slate-700 dark:text-slate-300">
                   Collaborate on flights, accommodations, and activities with your group
                 </p>
               </div>
               <div className="card-surface p-6 rounded-lg shadow">
-                <h3 className="text-xl font-semibold mb-2 text-slate-50">✈️ Find Flights</h3>
-                <p className="text-slate-300">
+                <h3 className="text-xl font-semibold mb-2 text-slate-900 dark:text-slate-50">✈️ Find Flights</h3>
+                <p className="text-slate-700 dark:text-slate-300">
                   Get smart recommendations based on everyone's preferences
                 </p>
               </div>
               <div className="card-surface p-6 rounded-lg shadow">
-                <h3 className="text-xl font-semibold mb-2 text-slate-50">🎯 Build Itinerary</h3>
-                <p className="text-slate-300">
+                <h3 className="text-xl font-semibold mb-2 text-slate-900 dark:text-slate-50">🎯 Build Itinerary</h3>
+                <p className="text-slate-700 dark:text-slate-300">
                   Create a day-by-day plan that works for everyone
                 </p>
               </div>
@@ -166,21 +166,21 @@ export default function Home() {
         {/* Header */}
         <div className="flex justify-between items-center mb-10">
           <div>
-            <h1 className="text-4xl font-bold text-white mb-2 tracking-tight">My Trips</h1>
-            <p className="text-slate-300">
+            <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-2 tracking-tight">My Trips</h1>
+            <p className="text-slate-700 dark:text-slate-300">
               Welcome back! Manage and view all your trips
             </p>
           </div>
           <div className="flex gap-3">
             <Link
               href="/trips/join"
-              className="glass-card px-6 py-3 rounded-xl font-semibold text-slate-200 hover:bg-white/10 transition-all"
+              className="bg-sky-100 text-slate-900 px-6 py-3 rounded-xl font-semibold hover:bg-sky-200 transition-all dark:glass-card dark:text-slate-200 dark:hover:bg-white/10"
             >
               Join Trip
             </Link>
             <Link
               href="/trips/new"
-              className="bg-gradient-to-r from-indigo-600 to-violet-700 text-white px-6 py-3 rounded-xl font-semibold hover:from-indigo-700 hover:to-violet-800 transition-all shadow-lg shadow-violet-600/40"
+              className="bg-sky-200 text-slate-900 px-6 py-3 rounded-xl font-semibold hover:bg-sky-300 transition-all shadow-lg dark:bg-gradient-to-r dark:from-indigo-600 dark:to-violet-700 dark:text-white dark:hover:from-indigo-700 dark:hover:to-violet-800 dark:shadow-violet-600/40"
             >
               + Create New Trip
             </Link>
@@ -202,22 +202,22 @@ export default function Home() {
             className="glass-card rounded-3xl p-16 text-center max-w-2xl mx-auto"
           >
             <div className="text-6xl mb-6">✈️</div>
-            <h2 className="text-3xl font-bold text-slate-50 mb-4 tracking-tight">
+            <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-50 mb-4 tracking-tight">
               Ready for an adventure?
             </h2>
-            <p className="text-slate-300 mb-8 text-lg">
+            <p className="text-slate-700 dark:text-slate-300 mb-8 text-lg">
               Start planning your next trip with friends. Create a trip or join one with an invite code.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
                 href="/trips/new"
-                className="bg-gradient-to-r from-indigo-600 to-violet-700 text-white px-8 py-4 rounded-2xl font-semibold text-lg hover:from-indigo-700 hover:to-violet-800 transition-all shadow-xl shadow-violet-600/40 hover:shadow-2xl hover:shadow-violet-600/50"
+                className="bg-sky-200 text-slate-900 px-8 py-4 rounded-2xl font-semibold text-lg hover:bg-sky-300 transition-all shadow-xl dark:bg-gradient-to-r dark:from-indigo-600 dark:to-violet-700 dark:text-white dark:hover:from-indigo-700 dark:hover:to-violet-800 dark:shadow-violet-600/40 dark:hover:shadow-violet-600/50"
               >
                 ✨ Create Your First Trip
               </Link>
               <Link
                 href="/trips/join"
-                className="glass-card px-8 py-4 rounded-2xl font-semibold text-lg text-slate-200 hover:bg-white/10 transition-all border border-white/20"
+                className="bg-sky-100 text-slate-900 px-8 py-4 rounded-2xl font-semibold text-lg hover:bg-sky-200 transition-all border border-sky-200 dark:glass-card dark:text-slate-200 dark:hover:bg-white/10 dark:border-white/20"
               >
                 Join with Code
               </Link>
@@ -231,18 +231,18 @@ export default function Home() {
             {trips.map((trip) => (
               <div
                 key={trip.id}
-                className="card-surface rounded-lg p-6 hover:bg-slate-700 transition-colors"
+                className="card-surface rounded-lg p-6 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
               >
                 <div className="mb-4">
-                  <h3 className="text-xl font-semibold text-slate-50 mb-2">
+                  <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-50 mb-2">
                     {trip.name}
                   </h3>
-                  <p className="text-slate-300 text-sm">
+                  <p className="text-slate-700 dark:text-slate-300 text-sm">
                     {trip.destination_city}, {trip.destination_country}
                   </p>
                 </div>
 
-                <div className="mb-4 space-y-2 text-sm text-slate-400">
+                <div className="mb-4 space-y-2 text-sm text-slate-600 dark:text-slate-400">
                   <div className="flex items-center gap-2">
                     <span>📅</span>
                     <span>
@@ -258,7 +258,7 @@ export default function Home() {
 
                 <Link
                   href={`/trips/${trip.id}`}
-                  className="block w-full bg-gradient-to-r from-indigo-600 to-violet-700 text-white text-center px-4 py-3 rounded-xl font-semibold hover:from-indigo-700 hover:to-violet-800 transition-all shadow-lg shadow-violet-600/40"
+                  className="block w-full bg-sky-200 text-slate-900 text-center px-4 py-3 rounded-xl font-semibold hover:bg-sky-300 transition-all shadow-lg dark:bg-gradient-to-r dark:from-indigo-600 dark:to-violet-700 dark:text-white dark:hover:from-indigo-700 dark:hover:to-violet-800 dark:shadow-violet-600/40"
                 >
                   View Trip →
                 </Link>

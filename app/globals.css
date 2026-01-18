@@ -3,26 +3,42 @@
 @tailwind utilities;
 
 :root {
-  --background: #0f172a; /* slate-900 */
-  --foreground: #f1f5f9; /* slate-100 */
-  --card-bg: #1e293b; /* slate-800 */
-  --card-border: #334155; /* slate-700 */
-  --text-primary: #f8fafc; /* slate-50 */
-  --text-secondary: #cbd5e1; /* slate-300 */
-  --accent: #3b82f6; /* blue-500 */
-  --accent-hover: #2563eb; /* blue-600 */
-  --gold: #fbbf24; /* amber-400 */
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card-bg: rgba(255, 255, 255, 0.7);
+  --card-bg-hover: rgba(255, 255, 255, 0.85);
+  --card-border: rgba(15, 23, 42, 0.08);
+  --card-border-hover: rgba(15, 23, 42, 0.16);
+  --card-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --gold: #fbbf24;
   --gold-glow: rgba(251, 191, 36, 0.5);
+}
+
+.dark {
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+  --card-bg: rgba(15, 23, 42, 0.6);
+  --card-bg-hover: rgba(15, 23, 42, 0.7);
+  --card-border: rgba(255, 255, 255, 0.2);
+  --card-border-hover: rgba(255, 255, 255, 0.3);
+  --card-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
 }
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 body {
   color: var(--foreground);
-  background: #0f172a; /* Solid dark background, world map will show through spotlight */
+  background: var(--background);
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   min-height: 100vh;
   position: relative;
+  transition: background-color 200ms ease, color 200ms ease;
 }
 
 /* Glassmorphism background pattern */
@@ -33,12 +49,19 @@ body::before {
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: 
+  background-image:
+    radial-gradient(at 20% 30%, rgba(59, 130, 246, 0.08) 0px, transparent 55%),
+    radial-gradient(at 80% 70%, rgba(168, 85, 247, 0.08) 0px, transparent 55%),
+    radial-gradient(at 50% 50%, rgba(236, 72, 153, 0.04) 0px, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.dark body::before {
+  background-image:
     radial-gradient(at 20% 30%, rgba(59, 130, 246, 0.1) 0px, transparent 50%),
     radial-gradient(at 80% 70%, rgba(168, 85, 247, 0.1) 0px, transparent 50%),
     radial-gradient(at 50% 50%, rgba(236, 72, 153, 0.05) 0px, transparent 50%);
-  pointer-events: none;
-  z-index: 0;
 }
 
 body > * {
@@ -52,19 +75,19 @@ body > * {
   }
   
   .card-surface {
-    background: rgba(15, 23, 42, 0.6); /* bg-slate-900/60 */
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
     color: var(--text-primary);
+    transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease;
   }
 
   .glass-card {
-    background: rgba(15, 23, 42, 0.6); /* bg-slate-900/60 */
+    background: var(--card-bg);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid var(--card-border);
     border-radius: 1.5rem;
+    transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease;
   }
 
   .glass-card-hover {
@@ -73,11 +96,11 @@ body > * {
 
   .glass-card-hover:hover {
     transform: translateY(-0.5rem);
-    background: rgba(15, 23, 42, 0.7); /* Darker on hover */
+    background: var(--card-bg-hover);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
-    border-color: rgba(255, 255, 255, 0.3);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    border-color: var(--card-border-hover);
+    box-shadow: var(--card-shadow);
   }
 
   .voting-pulse {
