@@ -4,8 +4,18 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { v4 as uuidv4 } from 'uuid';
-import { ArrowLeft, Sparkles, Plane, Hotel, Target, Calendar, Check } from 'lucide-react';
+import dynamicImport from 'next/dynamic';
 import confetti from 'canvas-confetti';
+
+export const dynamic = 'force-dynamic';
+
+const ArrowLeft = dynamicImport(() => import('lucide-react').then(m => m.ArrowLeft), { ssr: false });
+const Sparkles = dynamicImport(() => import('lucide-react').then(m => m.Sparkles), { ssr: false });
+const Plane = dynamicImport(() => import('lucide-react').then(m => m.Plane), { ssr: false });
+const Hotel = dynamicImport(() => import('lucide-react').then(m => m.Hotel), { ssr: false });
+const Target = dynamicImport(() => import('lucide-react').then(m => m.Target), { ssr: false });
+const Calendar = dynamicImport(() => import('lucide-react').then(m => m.Calendar), { ssr: false });
+const Check = dynamicImport(() => import('lucide-react').then(m => m.Check), { ssr: false });
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { FinalizedSuggestionRow } from '@/lib/supabase';
@@ -84,12 +94,17 @@ export default function SuggestionsPage() {
   const [finalized, setFinalized] = useState<FinalizedSuggestionRow[]>([]);
   const [membersCount, setMembersCount] = useState(0);
   const [votingPulse, setVotingPulse] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
   const [approvedItems, setApprovedItems] = useState<Set<string>>(new Set());
   const [hoveredFlightId, setHoveredFlightId] = useState<string | null>(null);
   const [voteReasonDrafts, setVoteReasonDrafts] = useState<Record<string, string>>({});
   const [showReasonFor, setShowReasonFor] = useState<Record<string, boolean>>({});
   const [membersMap, setMembersMap] = useState<Record<string, string>>({}); // member_id -> name
   const summaryUpdateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -355,6 +370,10 @@ export default function SuggestionsPage() {
     }
 
     summaryUpdateTimer.current = setTimeout(async () => {
+      const flights = suggestions?.suggestions.flights || [];
+      const accommodations = suggestions?.suggestions.accommodations || [];
+      const activities = suggestions?.suggestions.activities || [];
+
       const approvedFlights = flights.filter(
         (flight) => getVoteCountFrom(allVotes, 'flight', flight.id) === membersCount
       );
@@ -502,7 +521,7 @@ export default function SuggestionsPage() {
       <div className="min-h-screen pb-8 bg-slate-50 dark:bg-slate-900">
         <div className="container mx-auto px-4 max-w-7xl">
           <div className="glass-card p-16 text-center">
-            <Sparkles className="w-16 h-16 text-purple-500 dark:text-purple-400 mx-auto mb-6 opacity-80" />
+            {mounted && <Sparkles className="w-16 h-16 text-purple-500 dark:text-purple-400 mx-auto mb-6 opacity-80" />}
             <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-10 tracking-tight">
               Generate Group Recommendations
             </h1>
@@ -514,7 +533,7 @@ export default function SuggestionsPage() {
               disabled={generating}
               className="bg-sky-200 text-slate-900 px-8 py-4 rounded-3xl font-semibold text-lg hover:bg-sky-300 transition-all glass-card-hover disabled:opacity-50 disabled:cursor-not-allowed shadow-lg flex items-center gap-2 mx-auto dark:bg-gradient-to-r dark:from-blue-600 dark:to-purple-600 dark:text-white dark:hover:from-blue-700 dark:hover:to-purple-700"
             >
-              {generating ? (
+              {mounted && generating ? (
                 <>
                   <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -560,11 +579,12 @@ export default function SuggestionsPage() {
 
   // Find cheapest and fastest flight for "Best Value" tag
   const cheapestFlight = flights.length > 0 ? flights.reduce((prev, curr) => (prev.price < curr.price ? prev : curr)) : null;
-  const fastestFlight = flights.length > 0 ? flights.reduce((prev, curr) => {
+  const fastestFlightReducer = (prev: FlightSuggestion, curr: FlightSuggestion) => {
     const prevDuration = parseInt(prev.duration.replace(/[^\d]/g, ''));
     const currDuration = parseInt(curr.duration.replace(/[^\d]/g, ''));
     return prevDuration < currDuration ? prev : curr;
-  }) : null;
+  };
+  const fastestFlight = flights.length > 0 ? flights.reduce(fastestFlightReducer) : null;
 
   return (
     <div className="min-h-screen pb-8 bg-slate-50 dark:bg-slate-900">
@@ -1117,8 +1137,10 @@ export default function SuggestionsPage() {
                               {flight.departure.airport} → {flight.arrival.airport} • {flight.duration}
                             </div>
                           </div>
-                        )}
-                      </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
 
                 <div className="card-surface rounded-2xl p-6">
                   <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-4 tracking-tight">✅ Approved Stays</h2>
@@ -1143,8 +1165,10 @@ export default function SuggestionsPage() {
                               {accommodation.type} • {accommodation.location}
                             </div>
                           </div>
-                        )}
-                      </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
 
                 <div className="card-surface rounded-2xl p-6">
                   <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50 mb-4">✅ Approved Activities</h2>
@@ -1169,11 +1193,10 @@ export default function SuggestionsPage() {
                               {activity.type} • {activity.location}
                             </div>
                           </div>
-                        )}
-                      </div>
-                    </>
-                  );
-                })()}
+                        ))}
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>

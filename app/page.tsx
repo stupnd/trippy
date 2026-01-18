@@ -66,6 +66,11 @@ function TripCard({ trip, index }: { trip: UserTrip; index: number }) {
   const destinationImage = `https://source.unsplash.com/800x600/?${encodeURIComponent(trip.destination_city)},travel`;
   const memberAvatars = (trip.members || []).slice(0, 5);
   const [imageError, setImageError] = useState(false);
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   return (
     <motion.div
@@ -121,6 +126,16 @@ function TripCard({ trip, index }: { trip: UserTrip; index: number }) {
         {memberAvatars.length > 0 && (
           <div className="flex items-center gap-2 mb-6 -space-x-2">
             {memberAvatars.map((member, idx) => {
+              if (!hasMounted) {
+                return (
+                  <div
+                    key={member.id}
+                    className="relative w-10 h-10 rounded-full bg-slate-800 border-2 border-slate-950 overflow-hidden animate-pulse"
+                    style={{ zIndex: 10 - idx }}
+                  />
+                );
+              }
+
               const initials = member.name
                 .split(' ')
                 .map(n => n[0])
@@ -200,8 +215,8 @@ export default function Home() {
       // Fetch trip memberships for current user
       const { data: memberships, error: membersError } = await supabase
         .from('trip_members')
-        .select('id, trip_id, joined_at, name')
-        .eq('user_id', user!.id) // Use user_id column, not id
+        .select('id, trip_id, joined_at, user_id')
+        .eq('user_id', user!.id)
         .order('joined_at', { ascending: false });
 
       if (membersError) throw membersError;
@@ -211,6 +226,13 @@ export default function Home() {
         setLoading(false);
         return;
       }
+
+      // Fetch profile for current user
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user!.id)
+        .maybeSingle();
 
       // Fetch trip details for each membership
       const tripIds = memberships.map((m) => m.trip_id);
@@ -226,34 +248,45 @@ export default function Home() {
         (tripsData || []).map(async (trip) => {
           const { data: tripMembers } = await supabase
             .from('trip_members')
-            .select('id, user_id, name')
+            .select('id, user_id')
             .eq('trip_id', trip.id)
             .limit(5);
 
-          const memberIds = (tripMembers || []).filter(m => m.user_id).map(m => m.user_id!);
-          const profileMap = new Map<string, string | null>();
+          // Fetch profiles for trip members
+          const memberUserIds = (tripMembers || []).map(m => m.user_id).filter(Boolean);
+          let profileMap = new Map<string, { full_name?: string; avatar_url?: string | null }>();
           
-          if (memberIds.length > 0) {
+          if (memberUserIds.length > 0) {
             const { data: profiles } = await supabase
               .from('profiles')
-              .select('id, avatar_url')
-              .in('id', memberIds);
-
+              .select('id, full_name, avatar_url')
+              .in('id', memberUserIds);
+            
             (profiles || []).forEach(p => {
-              profileMap.set(p.id, p.avatar_url);
+              if (p.id) {
+                profileMap.set(p.id, {
+                  full_name: p.full_name || undefined,
+                  avatar_url: p.avatar_url || null,
+                });
+              }
             });
           }
 
-          const membersWithAvatars = (tripMembers || []).map(m => ({
-            ...m,
-            avatar_url: m.user_id ? profileMap.get(m.user_id) || null : null,
-          }));
+          const membersWithAvatars = (tripMembers || []).map((m: any) => {
+            const profile = m.user_id ? profileMap.get(m.user_id) : null;
+            const fallbackName = profile?.full_name || (m.user_id ? 'Traveler' : 'Guest');
+            return {
+              ...m,
+              name: fallbackName,
+              avatar_url: profile?.avatar_url || null,
+            };
+          });
 
           const membership = memberships.find((m) => m.trip_id === trip.id);
           return {
             ...trip,
             joined_at: membership?.joined_at || '',
-            member_name: membership?.name || '',
+            member_name: userProfile?.full_name || '',
             member_id: membership?.id || '',
             members: membersWithAvatars,
             memberCount: membersWithAvatars.length,

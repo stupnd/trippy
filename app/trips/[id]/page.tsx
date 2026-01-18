@@ -39,6 +39,7 @@ export default function TripDetailPage() {
   const [budgetTab, setBudgetTab] = useState<'breakdown' | 'itinerary'>('breakdown');
   const [itineraryLoading, setItineraryLoading] = useState(false);
   const [itineraryError, setItineraryError] = useState('');
+  const [mounted, setMounted] = useState(false);
   const [itineraryDays, setItineraryDays] = useState<
     {
       date: string;
@@ -78,6 +79,10 @@ export default function TripDetailPage() {
     { value: 'completed', label: 'Completed' },
     { value: 'canceled', label: 'Canceled' },
   ];
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Auth protection
   useEffect(() => {
@@ -141,51 +146,37 @@ export default function TripDetailPage() {
         (preferencesData || []).map((p) => p.member_id)
       );
 
-      // Fetch profile avatars for all members
+      // Fetch profiles for all members
       const memberUserIds = (membersData || []).map(m => (m as any).user_id).filter(Boolean);
+      let profilesMap = new Map<string, { full_name?: string; avatar_url?: string | null }>();
       
-      console.log('Member user IDs to fetch avatars for:', memberUserIds);
-      
-      let profilesData = null;
       if (memberUserIds.length > 0) {
-        const { data, error: profilesError } = await supabase
+        const { data: profilesData } = await supabase
           .from('profiles')
-          .select('id, avatar_url')
+          .select('id, full_name, avatar_url')
           .in('id', memberUserIds);
         
-        if (profilesError) {
-          console.error('❌ Error fetching profiles:', profilesError);
-          console.error('Error details:', JSON.stringify(profilesError, null, 2));
-        } else {
-          profilesData = data;
-          console.log('✅ Fetched profiles for avatars:', profilesData);
-          if (!profilesData || profilesData.length === 0) {
-            console.warn('⚠️ No profiles found. This might be an RLS (Row Level Security) issue.');
-            console.warn('Check Supabase RLS policies on the profiles table.');
+        (profilesData || []).forEach(profile => {
+          if (profile.id) {
+            profilesMap.set(profile.id, {
+              full_name: profile.full_name || undefined,
+              avatar_url: profile.avatar_url || null,
+            });
           }
-        }
-      } else {
-        console.warn('⚠️ No member user IDs found. All members might have null user_id.');
+        });
       }
 
-      // Create a map of user_id -> avatar_url
-      const avatarMap = new Map<string, string | null>();
-      (profilesData || []).forEach(profile => {
-        if (profile.id) {
-          avatarMap.set(profile.id, profile.avatar_url || null);
-          console.log(`Mapped avatar for user ${profile.id}:`, profile.avatar_url);
-        }
-      });
-
       const membersWithStatus: MemberWithStatus[] = (membersData || []).map(
-        (member) => {
-          const userId = (member as any).user_id;
-          const avatarUrl = userId ? avatarMap.get(userId) || null : null;
-          console.log(`Member ${member.name} (user_id: ${userId}): avatar_url =`, avatarUrl);
+        (member: any) => {
+          const userId = member.user_id;
+          const profile = userId ? profilesMap.get(userId) : null;
+          // Use full_name from profile, or fallback to "Traveler" if no profile exists
+          const displayName = profile?.full_name || (userId ? 'Traveler' : 'Guest');
           return {
             ...member,
+            name: displayName,
             hasPreferences: membersWithPreferences.has(member.id),
-            avatar_url: avatarUrl,
+            avatar_url: profile?.avatar_url || null,
           };
         }
       );
@@ -1289,7 +1280,7 @@ export default function TripDetailPage() {
                   : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 shadow-lg'
               }`}
             >
-              {generating ? (
+              {mounted && generating ? (
                 <span className="flex items-center gap-2">
                   <svg
                     className="animate-spin h-5 w-5"
@@ -1350,6 +1341,14 @@ export default function TripDetailPage() {
             </div>
             <div className="flex flex-wrap gap-3 items-center">
               {members.map((member, index) => {
+                if (!mounted) {
+                  return (
+                    <div key={member.id} className="relative inline-flex items-center">
+                      <div className="relative w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center border-2 border-white/20 overflow-hidden animate-pulse" />
+                    </div>
+                  );
+                }
+
                 const initials = member.name
                   .split(' ')
                   .map(n => n[0])
@@ -1688,6 +1687,23 @@ export default function TripDetailPage() {
                   {/* Member List */}
                   <div className="flex-1 overflow-y-auto p-6 space-y-4">
                 {members.map((member, index) => {
+                  if (!mounted) {
+                    return (
+                      <div
+                        key={member.id}
+                        className="glass-card p-4 rounded-2xl flex items-center gap-4 border-slate-200 dark:border-white/20"
+                      >
+                        <div className="relative">
+                          <div className="w-14 h-14 bg-slate-800 rounded-full flex items-center justify-center border-2 border-slate-200 dark:border-white/20 overflow-hidden animate-pulse" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="h-4 bg-slate-700 rounded w-24 mb-2 animate-pulse" />
+                          <div className="h-3 bg-slate-700 rounded w-16 animate-pulse" />
+                        </div>
+                      </div>
+                    );
+                  }
+
                   const initials = member.name
                     .split(' ')
                     .map(n => n[0])
@@ -1695,8 +1711,8 @@ export default function TripDetailPage() {
                     .toUpperCase()
                     .slice(0, 2);
                   const colors = [
-                    'bg-blue-500', 'bg-purple-500', 'bg-pink-500', 'bg-emerald-500',
-                    'bg-orange-500', 'bg-cyan-500', 'bg-violet-500', 'bg-rose-500'
+                    'bg-slate-600', 'bg-zinc-700', 'bg-neutral-700', 'bg-slate-700',
+                    'bg-zinc-600', 'bg-slate-800', 'bg-neutral-800', 'bg-zinc-800'
                   ];
                   const colorClass = colors[index % colors.length];
 
@@ -1846,7 +1862,7 @@ function DrawerChat({ tripId, members }: { tripId: string; members: MemberWithSt
         const enrichedMessages = (data || [])
           .map((msg) => {
             const member = members.find(m => m.id === msg.member_id || m.user_id === msg.member_id);
-            return { ...msg, sender_name: member?.name || 'Unknown' };
+            return { ...msg, sender_name: member?.name || 'Traveler' };
           })
           .reverse();
 
@@ -1878,7 +1894,7 @@ function DrawerChat({ tripId, members }: { tripId: string; members: MemberWithSt
           const member = members.find(m => m.id === newMsg.member_id || m.user_id === newMsg.member_id);
           setMessages((prev) => [
             ...prev,
-            { ...newMsg, sender_name: member?.name || 'Unknown' },
+            { ...newMsg, sender_name: member?.name || 'Traveler' },
           ]);
         }
       )
