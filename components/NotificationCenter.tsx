@@ -403,11 +403,11 @@ export default function NotificationCenter({ isOpen, onClose, onNotificationRead
   };
 
   const getNotificationColor = (type: string, read: boolean) => {
-    const baseColor = type === 'message' 
-      ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
-      : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
-    
-    return read ? baseColor.replace('/20', '/10').replace('/30', '/20') : baseColor;
+    const baseColor =
+      type === 'message'
+        ? 'bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-500/20 dark:text-indigo-300 dark:border-indigo-500/30'
+        : 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30';
+    return read ? `${baseColor} opacity-70` : baseColor;
   };
 
   if (!isOpen) return null;
@@ -419,7 +419,7 @@ export default function NotificationCenter({ isOpen, onClose, onNotificationRead
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/20 backdrop-blur-sm"
+        className="fixed inset-0 bg-slate-900/20 dark:bg-black/20 backdrop-blur-sm"
         onClick={onClose}
       />
 
@@ -430,16 +430,16 @@ export default function NotificationCenter({ isOpen, onClose, onNotificationRead
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: 20 }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="relative w-full max-w-md h-[calc(100vh-5rem)] bg-slate-900/95 dark:bg-slate-900/95 backdrop-blur-2xl border-l border-white/20 shadow-2xl flex flex-col"
+        className="relative w-full max-w-md h-[calc(100vh-5rem)] bg-white/90 dark:bg-slate-900/95 backdrop-blur-2xl border-l border-slate-200 dark:border-white/20 shadow-2xl flex flex-col"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/10">
-          <h2 className="text-xl font-bold text-white">Notifications</h2>
+        <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-white/10">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Notifications</h2>
           <div className="flex items-center gap-2">
             {notifications.length > 0 && notifications.some(n => !n.read) && (
               <button
                 onClick={markAllAsRead}
-                className="px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors flex items-center gap-1.5"
+                className="px-3 py-1.5 text-xs font-medium text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors flex items-center gap-1.5 dark:text-slate-300 dark:hover:text-white dark:bg-white/5 dark:hover:bg-white/10"
               >
                 <CheckCheck className="w-3.5 h-3.5" />
                 Mark all as read
@@ -447,9 +447,9 @@ export default function NotificationCenter({ isOpen, onClose, onNotificationRead
             )}
             <button
               onClick={onClose}
-              className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+              className="p-2 rounded-lg hover:bg-slate-100 transition-colors dark:hover:bg-white/10"
             >
-              <X className="w-5 h-5 text-slate-300" />
+              <X className="w-5 h-5 text-slate-600 dark:text-slate-300" />
             </button>
           </div>
         </div>
@@ -458,23 +458,23 @@ export default function NotificationCenter({ isOpen, onClose, onNotificationRead
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="flex items-center justify-center h-64">
-              <div className="text-slate-400">Loading notifications...</div>
+              <div className="text-slate-600 dark:text-slate-400">Loading notifications...</div>
             </div>
           ) : notifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-center px-6">
-              <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
-                <MessageCircle className="w-8 h-8 text-slate-500" />
+              <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center mb-4">
+                <MessageCircle className="w-8 h-8 text-slate-500 dark:text-slate-500" />
               </div>
-              <p className="text-slate-400 text-sm">No notifications yet</p>
+              <p className="text-slate-700 dark:text-slate-400 text-sm">No notifications yet</p>
               <p className="text-slate-500 text-xs mt-1">You'll see messages and trip updates here</p>
             </div>
           ) : (
-            <div className="divide-y divide-white/5">
+            <div className="divide-y divide-slate-200 dark:divide-white/5">
               {notifications.map((notification) => (
                 <motion.div
                   key={notification.id}
-                  className={`w-full text-left p-4 hover:bg-white/5 transition-colors group cursor-pointer ${
-                    !notification.read ? 'bg-white/2' : ''
+                  className={`w-full text-left p-4 hover:bg-slate-100 transition-colors group cursor-pointer dark:hover:bg-white/5 ${
+                    !notification.read ? 'bg-slate-50 dark:bg-transparent' : ''
                   }`}
                   onClick={(e) => handleNotificationClick(notification, e)}
                   whileHover={{ x: -2 }}
@@ -488,18 +488,22 @@ export default function NotificationCenter({ isOpen, onClose, onNotificationRead
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2 mb-1">
-                        <p className={`text-sm font-semibold truncate ${notification.read ? 'text-slate-300' : 'text-white'}`}>
+                        <p className={`text-sm truncate ${
+                          notification.read ? 'font-medium text-slate-600 dark:text-slate-300' : 'font-semibold text-slate-900 dark:text-white'
+                        }`}>
                           {notification.sender_name}
                         </p>
                         <span className="text-xs text-slate-500 flex-shrink-0">
                           {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-400 mb-1 truncate">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1 truncate">
                         {notification.trip_name}
                       </p>
                       {notification.content && (
-                        <p className={`text-sm mt-1 line-clamp-2 ${notification.read ? 'text-slate-400' : 'text-slate-300'}`}>
+                        <p className={`text-sm mt-1 line-clamp-2 ${
+                          notification.read ? 'text-slate-600 dark:text-slate-400' : 'text-slate-800 dark:text-slate-300'
+                        }`}>
                           {notification.content}
                         </p>
                       )}
@@ -511,20 +515,20 @@ export default function NotificationCenter({ isOpen, onClose, onNotificationRead
                         <button
                           onClick={(e) => handleApproveRequest(notification, e)}
                           disabled={processingRequest === notification.id}
-                          className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 transition-colors disabled:opacity-50"
+                          className="p-1.5 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors disabled:opacity-50 dark:bg-emerald-500/20 dark:text-emerald-300 dark:hover:bg-emerald-500/30"
                         >
                           <Check className="w-4 h-4" />
                         </button>
                         <button
                           onClick={(e) => handleRejectRequest(notification, e)}
                           disabled={processingRequest === notification.id}
-                          className="p-1.5 rounded-lg bg-red-500/20 text-red-300 hover:bg-red-500/30 transition-colors disabled:opacity-50"
+                          className="p-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-colors disabled:opacity-50 dark:bg-red-500/20 dark:text-red-300 dark:hover:bg-red-500/30"
                         >
                           <XIcon className="w-4 h-4" />
                         </button>
                       </div>
                     ) : (
-                      <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-slate-300 transition-colors flex-shrink-0 mt-1" />
+                      <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-slate-700 transition-colors flex-shrink-0 mt-1 dark:group-hover:text-slate-300" />
                     )}
                   </div>
                 </motion.div>

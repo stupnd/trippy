@@ -171,20 +171,20 @@ export default function FlightsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="text-slate-200">Loading...</div>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
+        <div className="text-slate-700 dark:text-slate-200">Loading...</div>
       </div>
     );
   }
 
   if (!trip) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-slate-50 mb-4">Trip not found</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50 mb-4">Trip not found</h1>
           <button
             onClick={() => router.back()}
-            className="text-blue-400 hover:underline"
+            className="text-blue-600 hover:underline dark:text-blue-400"
           >
             Go back
           </button>
@@ -194,42 +194,42 @@ export default function FlightsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 py-8">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 py-8">
       <div className="container mx-auto px-4 max-w-6xl">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-slate-50">Flights</h1>
-          <p className="text-slate-300 mt-2">
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-50">Flights</h1>
+          <p className="text-slate-700 dark:text-slate-300 mt-2">
             {trip.destination.city}, {trip.destination.country}
           </p>
         </div>
 
         <div className="card-surface rounded-lg p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4 text-slate-50">Search Flights</h2>
+          <h2 className="text-xl font-semibold mb-4 text-slate-900 dark:text-slate-50">Search Flights</h2>
           <form onSubmit={handleSearch} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-200 mb-2">
+                <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
                   Origin (IATA)
                 </label>
                 <input
                   type="text"
                   value={formData.origin}
                   onChange={(e) => setFormData({ ...formData, origin: e.target.value.toUpperCase() })}
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-50 dark:focus:ring-blue-500 dark:focus:border-blue-500"
                   placeholder="YOW"
                   maxLength={3}
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-200 mb-2">
+                <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
                   Destination (IATA)
                 </label>
                 <input
                   type="text"
                   value={formData.destination}
                   onChange={(e) => setFormData({ ...formData, destination: e.target.value.toUpperCase() })}
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-50 dark:focus:ring-blue-500 dark:focus:border-blue-500"
                   placeholder="LAX"
                   maxLength={3}
                   required
@@ -238,7 +238,7 @@ export default function FlightsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-200 mb-2">
+              <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
                 Departure Date Range
               </label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -246,21 +246,21 @@ export default function FlightsPage() {
                   type="date"
                   value={formData.departureStart}
                   onChange={(e) => setFormData({ ...formData, departureStart: e.target.value })}
-                  className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-50 dark:focus:ring-blue-500 dark:focus:border-blue-500"
                   required
                 />
                 <input
                   type="date"
                   value={formData.departureEnd}
                   onChange={(e) => setFormData({ ...formData, departureEnd: e.target.value })}
-                  className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-50 dark:focus:ring-blue-500 dark:focus:border-blue-500"
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-200 mb-2">
+              <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
                 Return Date Range
               </label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -268,14 +268,14 @@ export default function FlightsPage() {
                   type="date"
                   value={formData.returnStart}
                   onChange={(e) => setFormData({ ...formData, returnStart: e.target.value })}
-                  className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-50 dark:focus:ring-blue-500 dark:focus:border-blue-500"
                   required
                 />
                 <input
                   type="date"
                   value={formData.returnEnd}
                   onChange={(e) => setFormData({ ...formData, returnEnd: e.target.value })}
-                  className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-50 dark:focus:ring-blue-500 dark:focus:border-blue-500"
                   required
                 />
               </div>
@@ -283,7 +283,7 @@ export default function FlightsPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-200 mb-2">
+              <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
                   Budget (USD total for group)
                 </label>
                 <input
@@ -291,12 +291,12 @@ export default function FlightsPage() {
                   min="0"
                   value={formData.budget}
                   onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-50 dark:focus:ring-blue-500 dark:focus:border-blue-500"
                   placeholder="600"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-200 mb-2">
+                <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
                   Travelers
                 </label>
                 <input
@@ -306,7 +306,7 @@ export default function FlightsPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, travelers: Number(e.target.value) })
                   }
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-50 dark:focus:ring-blue-500 dark:focus:border-blue-500"
                   required
                 />
               </div>

@@ -168,20 +168,20 @@ export default function FoodRecommendationsPage() {
 
   if (authLoading || memberLoading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-slate-400">Loading...</div>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
+        <div className="text-slate-600 dark:text-slate-400">Loading...</div>
       </div>
     );
   }
 
   if (!trip) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-white mb-4 tracking-tight">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-4 tracking-tight">
             {error || 'Trip not found'}
           </h1>
-          <Link href="/" className="text-blue-400 hover:underline">
+          <Link href="/" className="text-blue-600 hover:underline dark:text-blue-400">
             Go back home
           </Link>
         </div>
@@ -190,29 +190,29 @@ export default function FoodRecommendationsPage() {
   }
 
   return (
-    <div className="min-h-screen pb-8">
+    <div className="min-h-screen pb-8 bg-slate-50 dark:bg-slate-900">
       <div className="container mx-auto px-4 md:px-8 max-w-7xl">
         {/* Header Section */}
         <div className="flex items-start justify-between gap-4 mb-10">
           <div>
-            <h1 className="text-4xl font-bold text-white mb-2 tracking-tight">
+            <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-2 tracking-tight">
               Food Recommendations
             </h1>
-            <p className="text-slate-400 text-lg">
+            <p className="text-slate-600 dark:text-slate-400 text-lg">
               {destinationLabel}
             </p>
           </div>
           <button
             onClick={handleFetchRecommendations}
             disabled={fetching}
-            className="px-6 py-3 rounded-xl font-semibold text-white transition-all bg-gradient-to-r from-indigo-600 to-violet-700 hover:from-indigo-700 hover:to-violet-800 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-6 py-3 rounded-xl font-semibold text-slate-900 transition-all bg-sky-200 hover:bg-sky-300 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 dark:bg-gradient-to-r dark:from-indigo-600 dark:to-violet-700 dark:text-white dark:hover:from-indigo-700 dark:hover:to-violet-800"
           >
             {fetching ? (
               <>
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                  className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
+                  className="w-4 h-4 border-2 border-slate-900/30 border-t-slate-900 rounded-full dark:border-white/30 dark:border-t-white"
                 />
                 Finding places...
               </>
@@ -226,7 +226,7 @@ export default function FoodRecommendationsPage() {
         </div>
 
         {error && (
-          <div className="bg-red-900/60 border border-red-500/50 text-red-200 px-4 py-3 rounded-3xl mb-6 backdrop-blur-xl">
+          <div className="bg-red-100 border border-red-200 text-red-700 px-4 py-3 rounded-3xl mb-6 backdrop-blur-xl dark:bg-red-900/60 dark:border-red-500/50 dark:text-red-200">
             {error}
           </div>
         )}
@@ -236,16 +236,16 @@ export default function FoodRecommendationsPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-slate-900/60 backdrop-blur-xl border border-white/20 rounded-3xl p-12 text-center"
+            className="card-surface rounded-3xl p-12 text-center"
           >
             <div className="flex flex-col items-center justify-center">
-              <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-6">
-                <UtensilsCrossed className="w-10 h-10 text-slate-400" />
+              <div className="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center mb-6 dark:bg-white/5">
+                <UtensilsCrossed className="w-10 h-10 text-slate-500 dark:text-slate-400" />
               </div>
-              <h3 className="text-xl font-semibold text-white mb-2 tracking-tight">
+              <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2 tracking-tight">
                 Looking for the best spots in {trip.destination_city}?
               </h3>
-              <p className="text-slate-400 text-sm max-w-md">
+              <p className="text-slate-600 dark:text-slate-400 text-sm max-w-md">
                 Click the button above to let AI find your perfect meal.
               </p>
             </div>
@@ -264,18 +264,18 @@ export default function FoodRecommendationsPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4, delay: index * 0.1 }}
-                  className="bg-slate-900/60 backdrop-blur-xl border border-white/20 rounded-3xl p-6 hover:bg-slate-900/70 transition-all"
+                  className="card-surface rounded-3xl p-6 hover:bg-slate-100 transition-all dark:hover:bg-slate-900/70"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-xl font-semibold text-white tracking-tight">{rec.name}</h3>
-                        <span className="text-xs bg-slate-700/50 text-slate-300 px-3 py-1 rounded-full border border-white/10">
+                        <h3 className="text-xl font-semibold text-slate-900 dark:text-white tracking-tight">{rec.name}</h3>
+                        <span className="text-xs bg-slate-100 text-slate-700 px-3 py-1 rounded-full border border-slate-200 dark:bg-slate-700/50 dark:text-slate-300 dark:border-white/10">
                           {rec.cuisine}
                         </span>
                       </div>
-                      <p className="text-slate-300 mb-3 text-sm leading-relaxed">{rec.why}</p>
-                      <div className="flex items-center gap-4 text-sm text-slate-400 flex-wrap">
+                      <p className="text-slate-700 dark:text-slate-300 mb-3 text-sm leading-relaxed">{rec.why}</p>
+                      <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400 flex-wrap">
                         <span className="flex items-center gap-1">
                           {priceIcon}
                           <span>{rec.price_range}</span>
@@ -296,14 +296,14 @@ export default function FoodRecommendationsPage() {
                           {rec.dietary_options.map((option) => (
                             <span
                               key={option}
-                              className="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded border border-blue-500/30"
+                              className="text-xs bg-blue-50 text-blue-900 px-2 py-1 rounded border border-blue-200 dark:bg-blue-500/20 dark:text-blue-300 dark:border-blue-500/30"
                             >
                               {option}
                             </span>
                           ))}
                         </div>
                       )}
-                      <div className="text-sm text-slate-400 mt-3">
+                      <div className="text-sm text-slate-600 dark:text-slate-400 mt-3">
                         {voteCount}/{membersCount} members approve
                       </div>
                     </div>
@@ -313,8 +313,8 @@ export default function FoodRecommendationsPage() {
                         onClick={() => handleVote(recommendationKey, true)}
                         className={`px-4 py-2 rounded-xl font-semibold transition-all ${
                           userVote === true
-                            ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-500/50'
-                            : 'bg-white/5 text-slate-200 hover:bg-emerald-500/20 hover:text-emerald-300 border border-white/10'
+                            ? 'bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/30 dark:text-emerald-300 dark:border-emerald-500/50'
+                            : 'bg-slate-100 text-slate-900 hover:bg-emerald-100 hover:text-emerald-700 border border-slate-200 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-emerald-500/20 dark:hover:text-emerald-300 dark:border-white/10'
                         }`}
                       >
                         ✓ Approve
@@ -323,8 +323,8 @@ export default function FoodRecommendationsPage() {
                         onClick={() => handleVote(recommendationKey, false)}
                         className={`px-4 py-2 rounded-xl font-semibold transition-all ${
                           userVote === false
-                            ? 'bg-red-500/30 text-red-300 border border-red-500/50'
-                            : 'bg-white/5 text-slate-200 hover:bg-red-500/20 hover:text-red-300 border border-white/10'
+                            ? 'bg-red-100 text-red-700 border border-red-200 dark:bg-red-500/30 dark:text-red-300 dark:border-red-500/50'
+                            : 'bg-slate-100 text-slate-900 hover:bg-red-100 hover:text-red-700 border border-slate-200 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-red-500/20 dark:hover:text-red-300 dark:border-white/10'
                         }`}
                       >
                         ✗ Reject

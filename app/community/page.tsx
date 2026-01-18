@@ -193,9 +193,9 @@ export default function CommunityPage() {
 
   if (loading || authLoading) {
     return (
-      <div className="min-h-screen pb-8">
+      <div className="min-h-screen pb-8 bg-slate-50 dark:bg-slate-900">
         <div className="container mx-auto px-4 md:px-8 max-w-7xl">
-          <div className="h-10 bg-white/10 rounded-2xl w-48 mt-8 mb-6 shimmer-loader"></div>
+          <div className="h-10 bg-slate-200 dark:bg-white/10 rounded-2xl w-48 mt-8 mb-6 shimmer-loader"></div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
               <div key={i} className="glass-card p-6 h-44 shimmer-loader"></div>
@@ -207,7 +207,7 @@ export default function CommunityPage() {
   }
 
   return (
-    <div className="min-h-screen pb-10">
+    <div className="min-h-screen pb-10 bg-slate-50 dark:bg-slate-900">
       <div className="container mx-auto px-4 md:px-8 max-w-7xl">
         <div className="pt-8 mb-8">
           <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-2 tracking-tight">
@@ -219,7 +219,7 @@ export default function CommunityPage() {
         </div>
 
         {error && (
-          <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded-lg mb-6">
+          <div className="bg-red-100 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 dark:bg-red-900 dark:border-red-700 dark:text-red-100">
             {error}
           </div>
         )}
@@ -266,7 +266,7 @@ export default function CommunityPage() {
                       {!isMember && isOwner && (
                         <Link
                           href={`/trips/${trip.id}`}
-                          className="inline-flex items-center justify-center w-full px-4 py-2 rounded-xl border border-white/20 text-slate-300 hover:bg-white/10 transition-all text-sm"
+                          className="inline-flex items-center justify-center w-full px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-100 transition-all text-sm dark:border-white/20 dark:text-slate-300 dark:hover:bg-white/10"
                         >
                           View Trip
                         </Link>
@@ -288,7 +288,7 @@ export default function CommunityPage() {
                             <button
                               type="button"
                               onClick={() => openRequestModal(trip)}
-                              className="inline-flex items-center justify-center w-full px-4 py-2 rounded-xl bg-white/10 text-slate-200 hover:bg-white/20 transition-all text-sm"
+                              className="inline-flex items-center justify-center w-full px-4 py-2 rounded-xl bg-sky-100 text-slate-900 hover:bg-sky-200 transition-all text-sm dark:bg-white/10 dark:text-slate-200 dark:hover:bg-white/20"
                               disabled={!user}
                             >
                               {user ? 'Request to Join' : 'Sign in to request'}
@@ -347,38 +347,38 @@ export default function CommunityPage() {
       </div>
 
       {requestOpen && requestTrip && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 flex items-center justify-center px-4">
-          <div className="glass-card w-full max-w-lg rounded-3xl p-6 border border-white/10">
+        <div className="fixed inset-0 z-50 bg-slate-900/30 dark:bg-slate-950/60 flex items-center justify-center px-4">
+          <div className="glass-card w-full max-w-lg rounded-3xl p-6 border border-slate-200 dark:border-white/10">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-white">Request to Join</h2>
+              <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Request to Join</h2>
               <button
                 onClick={() => setRequestOpen(false)}
-                className="text-slate-300 hover:text-white"
+                className="text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
                 aria-label="Close"
               >
                 ✕
               </button>
             </div>
-            <div className="text-sm text-slate-400 mb-4">
+            <div className="text-sm text-slate-600 dark:text-slate-400 mb-4">
               {requestTrip.name} · {requestTrip.destination_city}, {requestTrip.destination_country}
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm text-slate-300 mb-2">Display name</label>
+                <label className="block text-sm text-slate-700 dark:text-slate-300 mb-2">Display name</label>
                 <input
                   type="text"
                   value={requestForm.displayName}
                   onChange={(e) => setRequestForm((prev) => ({ ...prev, displayName: e.target.value }))}
-                  className="w-full rounded-2xl bg-white/5 border border-white/10 px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-2xl bg-white border border-slate-200 px-4 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-300/60 dark:bg-white/5 dark:border-white/10 dark:text-white dark:focus:ring-blue-500"
                   placeholder="Name shown to the group"
                 />
               </div>
               <div>
-                <label className="block text-sm text-slate-300 mb-2">Why do you want to join?</label>
+                <label className="block text-sm text-slate-700 dark:text-slate-300 mb-2">Why do you want to join?</label>
                 <textarea
                   value={requestForm.message}
                   onChange={(e) => setRequestForm((prev) => ({ ...prev, message: e.target.value }))}
-                  className="w-full min-h-[120px] rounded-2xl bg-white/5 border border-white/10 px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full min-h-[120px] rounded-2xl bg-white border border-slate-200 px-4 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-300/60 dark:bg-white/5 dark:border-white/10 dark:text-white dark:focus:ring-blue-500"
                   maxLength={280}
                 />
                 <div className="text-xs text-slate-500 mt-1">
@@ -386,7 +386,7 @@ export default function CommunityPage() {
                 </div>
               </div>
               {requestError && (
-                <div className="rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-red-200 text-sm">
+                <div className="rounded-2xl border border-red-200 bg-red-100 px-4 py-3 text-red-700 text-sm dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-200">
                   {requestError}
                 </div>
               )}
@@ -394,7 +394,7 @@ export default function CommunityPage() {
                 <button
                   type="button"
                   onClick={() => setRequestOpen(false)}
-                  className="flex-1 rounded-2xl border border-white/10 px-4 py-2 text-slate-200 hover:bg-white/5"
+                  className="flex-1 rounded-2xl border border-slate-200 px-4 py-2 text-slate-800 hover:bg-slate-100 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5"
                 >
                   Cancel
                 </button>
@@ -402,7 +402,7 @@ export default function CommunityPage() {
                   type="button"
                   onClick={submitJoinRequest}
                   disabled={requestSaving}
-                  className="flex-1 rounded-2xl bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 rounded-2xl bg-sky-200 px-4 py-2 font-semibold text-slate-900 hover:bg-sky-300 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-blue-600 dark:text-white dark:hover:bg-blue-700"
                 >
                   {requestSaving ? 'Sending...' : 'Send Request'}
                 </button>

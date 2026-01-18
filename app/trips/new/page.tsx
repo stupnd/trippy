@@ -127,8 +127,8 @@ export default function NewTripPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="text-slate-200">Loading...</div>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
+        <div className="text-slate-700 dark:text-slate-200">Loading...</div>
       </div>
     );
   }
@@ -138,16 +138,16 @@ export default function NewTripPage() {
   }
 
   return (
-    <div className="min-h-screen pb-12">
+    <div className="min-h-screen pb-12 bg-slate-50 dark:bg-slate-900">
       <div className="container mx-auto px-4 md:px-8 max-w-2xl">
         <div className="card-surface rounded-lg shadow-xl p-8">
-          <h1 className="text-3xl font-bold text-white mb-10 tracking-tight">
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-10 tracking-tight">
             Create a New Trip
           </h1>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-slate-200 mb-2">
+              <label htmlFor="name" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
                 Trip Name
               </label>
               <input
@@ -156,13 +156,13 @@ export default function NewTripPage() {
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-50 dark:focus:ring-blue-500 dark:focus:border-blue-500"
                 placeholder="Summer Vacation 2024"
               />
             </div>
 
             <div>
-              <label htmlFor="destination" className="block text-sm font-medium text-slate-200 mb-2">
+              <label htmlFor="destination" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
                 Destination
               </label>
               <div className="grid grid-cols-2 gap-4">
@@ -172,7 +172,7 @@ export default function NewTripPage() {
                   required
                   value={formData.city}
                   onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                  className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-50 dark:focus:ring-blue-500 dark:focus:border-blue-500"
                   placeholder="City"
                 />
                 <input
@@ -181,7 +181,7 @@ export default function NewTripPage() {
                   required
                   value={formData.country}
                   onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                  className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-50 dark:focus:ring-blue-500 dark:focus:border-blue-500"
                   placeholder="Country"
                 />
               </div>
@@ -189,7 +189,7 @@ export default function NewTripPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="startDate" className="block text-sm font-medium text-slate-200 mb-2">
+                <label htmlFor="startDate" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
                   Start Date
                 </label>
                 <input
@@ -198,11 +198,11 @@ export default function NewTripPage() {
                   required
                   value={formData.startDate}
                   onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-50 dark:focus:ring-blue-500 dark:focus:border-blue-500"
                 />
               </div>
               <div>
-                <label htmlFor="endDate" className="block text-sm font-medium text-slate-200 mb-2">
+                <label htmlFor="endDate" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
                   End Date
                 </label>
                 <input
@@ -211,13 +211,13 @@ export default function NewTripPage() {
                   required
                   value={formData.endDate}
                   onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-50 dark:focus:ring-blue-500 dark:focus:border-blue-500"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="timezone" className="block text-sm font-medium text-slate-200 mb-2">
+              <label htmlFor="timezone" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
                 Timezone
               </label>
               <input
@@ -226,13 +226,13 @@ export default function NewTripPage() {
                 required
                 value={formData.timezone}
                 onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-50 dark:focus:ring-blue-500 dark:focus:border-blue-500"
                 placeholder="America/New_York"
               />
             </div>
 
             <div>
-              <label htmlFor="userName" className="block text-sm font-medium text-slate-200 mb-2">
+              <label htmlFor="userName" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
                 Your Display Name
               </label>
               <input
@@ -241,13 +241,13 @@ export default function NewTripPage() {
                 required
                 value={formData.userName}
                 onChange={(e) => setFormData({ ...formData, userName: e.target.value })}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-50 dark:focus:ring-blue-500 dark:focus:border-blue-500"
                 placeholder="John Doe"
               />
             </div>
 
             {error && (
-              <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded-lg">
+              <div className="bg-red-100 border border-red-200 text-red-700 px-4 py-3 rounded-lg dark:bg-red-900 dark:border-red-700 dark:text-red-100">
                 {error}
               </div>
             )}
@@ -256,14 +256,14 @@ export default function NewTripPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 bg-sky-200 text-slate-900 px-6 py-3 rounded-lg font-semibold hover:bg-sky-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed dark:bg-blue-600 dark:text-white dark:hover:bg-blue-700"
               >
                 {loading ? 'Creating...' : 'Create Trip'}
               </button>
               <button
                 type="button"
                 onClick={() => router.back()}
-                className="px-6 py-3 border border-slate-600 text-slate-200 rounded-lg font-semibold hover:bg-slate-700 transition-colors"
+                className="px-6 py-3 border border-slate-200 text-slate-800 rounded-lg font-semibold hover:bg-slate-100 transition-colors dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
               >
                 Cancel
               </button>
