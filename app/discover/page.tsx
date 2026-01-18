@@ -13,6 +13,7 @@ interface Destination {
   id: string;
   name: string;
   country: string;
+  countryCode: string;
   image: string;
   description: string;
   lat: number;
@@ -180,6 +181,15 @@ export default function DiscoverPage() {
     return { x: `${x}%`, y: `${y}%` };
   };
 
+  const getFlagUrl = (countryCode: string) => {
+    if (!countryCode) return '';
+    return `https://flagcdn.com/${countryCode.toLowerCase()}.svg`;
+  };
+
+  const previewDestination = poiPreview
+    ? filteredDestinations.find((dest) => dest.id === poiPreview.id)
+    : undefined;
+
   return (
     <div className="min-h-screen pb-8">
       <div className="container mx-auto px-4 md:px-8 max-w-7xl">
@@ -302,7 +312,16 @@ export default function DiscoverPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <h3 className="text-lg font-bold text-white">{dest.name}</h3>
-                      <p className="text-slate-300 text-xs">{dest.country}</p>
+                      <div className="flex items-center gap-2 text-slate-300 text-xs">
+                        {dest.countryCode && (
+                          <img
+                            src={getFlagUrl(dest.countryCode)}
+                            alt={`${dest.country} flag`}
+                            className="h-3 w-5 rounded-sm border border-white/20"
+                          />
+                        )}
+                        <span>{dest.country}</span>
+                      </div>
                     </div>
                     <span className="text-[10px] uppercase tracking-wide text-slate-400">
                       {dest.vibe}
@@ -407,10 +426,20 @@ export default function DiscoverPage() {
                 }}
               >
                 <p className="text-white font-semibold text-sm mb-1">
-                  {filteredDestinations.find(d => d.id === poiPreview.id)?.name}
+                  {previewDestination?.name}
                 </p>
+                <div className="flex items-center gap-2 text-slate-300 text-xs mb-1">
+                  {previewDestination?.countryCode && (
+                    <img
+                      src={getFlagUrl(previewDestination.countryCode)}
+                      alt={`${previewDestination.country || 'Country'} flag`}
+                      className="h-3 w-5 rounded-sm border border-white/20"
+                    />
+                  )}
+                  <span>{previewDestination?.country}</span>
+                </div>
                 <p className="text-slate-300 text-xs">
-                  {filteredDestinations.find(d => d.id === poiPreview.id)?.description || 'Explore this destination'}
+                  {previewDestination?.description || 'Explore this destination'}
                 </p>
               </motion.div>
             )}

@@ -18,6 +18,11 @@ const toNumber = (value: unknown, fallback: number): number => {
   return fallback;
 };
 
+const toCountryCode = (value: unknown): string => {
+  const code = toString(value, '').toUpperCase();
+  return /^[A-Z]{2}$/.test(code) ? code : '';
+};
+
 const slugify = (value: string): string => {
   const cleaned = value
     .toLowerCase()
@@ -44,6 +49,7 @@ export async function GET(request: NextRequest) {
 Output a JSON array. Each item must include:
 - name: city or destination name
 - country: country name
+- country_code: ISO 3166-1 alpha-2 country code (2 letters)
 - description: short 1-sentence summary (max 90 characters)
 - vibe: one of ${allowedVibes.join(', ')}
 - lat: latitude as number
@@ -85,6 +91,7 @@ Rules:
     const destinations = rawList.slice(0, limit).map((item: any, index: number) => {
       const name = toString(item?.name, `Destination ${index + 1}`);
       const country = toString(item?.country, 'Unknown');
+      const countryCode = toCountryCode(item?.country_code || item?.countryCode);
       const description = toString(item?.description, 'Explore this destination.');
       const vibeInput = toString(item?.vibe, 'history');
       const vibe = allowedVibes.includes(vibeInput as typeof allowedVibes[number])
@@ -100,6 +107,7 @@ Rules:
         id: slugify(idBase),
         name,
         country,
+        countryCode,
         description,
         vibe,
         lat,
