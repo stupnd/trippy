@@ -410,21 +410,6 @@ export default function SuggestionsPage() {
 
   return (
     <div className="min-h-screen pb-8">
-      {/* Breadcrumb */}
-      <div className="container mx-auto px-4 md:px-8 max-w-7xl mb-4">
-        <div className="flex items-center gap-2 text-sm text-slate-400">
-          <Link href="/" className="hover:text-slate-200 transition-colors">
-            My Trips
-          </Link>
-          <span>›</span>
-          <Link href={`/trips/${tripId}`} className="hover:text-slate-200 transition-colors">
-            Trip
-          </Link>
-          <span>›</span>
-          <span className="text-slate-300">Suggestions</span>
-        </div>
-      </div>
-
       <div className="container mx-auto px-4 md:px-8 max-w-7xl">
         <h1 className="text-4xl font-bold text-white mb-10 tracking-tight">Trip Suggestions</h1>
 
