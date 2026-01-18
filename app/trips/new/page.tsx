@@ -15,6 +15,10 @@ export default function NewTripPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [creatorProfile, setCreatorProfile] = useState<{ full_name?: string; avatar_url?: string | null } | null>(null);
+  const [citySuggestions, setCitySuggestions] = useState<Array<{ city: string; country: string }>>([]);
+  const [countrySuggestions, setCountrySuggestions] = useState<string[]>([]);
+  const [showCitySuggestions, setShowCitySuggestions] = useState(false);
+  const [showCountrySuggestions, setShowCountrySuggestions] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     originCity: '',
@@ -89,6 +93,85 @@ export default function NewTripPage() {
     setShowDestSuggestions(false);
     setDestSuggestions([]);
   };
+
+  useEffect(() => {
+    const query = formData.city.trim();
+    if (query.length < 2) {
+      setCitySuggestions([]);
+      return;
+    }
+
+    const timeout = setTimeout(async () => {
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?city=${encodeURIComponent(
+          query
+        )}&format=json&addressdetails=1&limit=8`;
+        const response = await fetch(url, {
+          headers: { 'Accept-Language': 'en' },
+        });
+        if (!response.ok) return;
+        const results = (await response.json()) as Array<{
+          address?: {
+            city?: string;
+            town?: string;
+            village?: string;
+            municipality?: string;
+            county?: string;
+            country?: string;
+          };
+        }>;
+        const next = new Map<string, { city: string; country: string }>();
+        results.forEach((item) => {
+          const address = item.address || {};
+          const city =
+            address.city ||
+            address.town ||
+            address.village ||
+            address.municipality ||
+            address.county ||
+            '';
+          const country = address.country || '';
+          if (!city || !country) return;
+          const key = `${city.toLowerCase()}-${country.toLowerCase()}`;
+          if (!next.has(key)) {
+            next.set(key, { city, country });
+          }
+        });
+        setCitySuggestions(Array.from(next.values()));
+      } catch (fetchError) {
+        console.error('City suggestions failed:', fetchError);
+      }
+    }, 250);
+
+    return () => clearTimeout(timeout);
+  }, [formData.city]);
+
+  useEffect(() => {
+    const query = formData.country.trim();
+    if (query.length < 2) {
+      setCountrySuggestions([]);
+      return;
+    }
+
+    const timeout = setTimeout(async () => {
+      try {
+        const url = `https://restcountries.com/v3.1/name/${encodeURIComponent(
+          query
+        )}?fields=name`;
+        const response = await fetch(url);
+        if (!response.ok) return;
+        const results = (await response.json()) as Array<{ name?: { common?: string } }>;
+        const names = Array.from(
+          new Set(results.map((c) => c.name?.common).filter(Boolean) as string[])
+        ).slice(0, 8);
+        setCountrySuggestions(names);
+      } catch (fetchError) {
+        console.error('Country suggestions failed:', fetchError);
+      }
+    }, 250);
+
+    return () => clearTimeout(timeout);
+  }, [formData.country]);
 
   // Prefill destination and dates from query params
   useEffect(() => {
@@ -229,8 +312,8 @@ export default function NewTripPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="text-slate-300">Loading...</div>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
+        <div className="text-slate-700 dark:text-slate-300">Loading...</div>
       </div>
     );
   }
@@ -240,19 +323,22 @@ export default function NewTripPage() {
   }
 
   return (
-    <div className="min-h-screen pb-12 bg-slate-900">
+    <div className="min-h-screen pb-12 bg-slate-50 dark:bg-slate-900">
       <div className="container mx-auto px-4 md:px-8 max-w-2xl">
-        <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-lg shadow-xl p-8">
-          <h1 className="text-3xl font-bold text-white mb-10 tracking-tight">
+        <div className="card-surface rounded-lg shadow-xl p-8">
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-10 tracking-tight">
             Create a New Trip
           </h1>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Creator Identity Display */}
             {creatorProfile?.full_name ? (
-              <div className="bg-zinc-900/50 border border-white/10 rounded-lg px-4 py-3">
-                <p className="text-sm text-slate-400">
-                  Creating as: <span className="font-semibold text-slate-300">{creatorProfile.full_name}</span>
+              <div className="bg-slate-100 border border-slate-200 rounded-lg px-4 py-3 dark:bg-zinc-900/50 dark:border-white/10">
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Creating as:{' '}
+                  <span className="font-semibold text-slate-800 dark:text-slate-300">
+                    {creatorProfile.full_name}
+                  </span>
                 </p>
               </div>
             ) : user && (
@@ -264,7 +350,7 @@ export default function NewTripPage() {
             )}
 
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-slate-400 mb-2">
+              <label htmlFor="name" className="block text-sm font-medium text-slate-700 dark:text-slate-400 mb-2">
                 Trip Name
               </label>
               <input
@@ -273,7 +359,7 @@ export default function NewTripPage() {
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-4 py-2 bg-zinc-900/50 border border-white/10 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400/20 focus:border-white/20"
+                className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-zinc-900/50 dark:border-white/10 dark:text-white dark:placeholder-slate-500 dark:focus:ring-slate-400/20 dark:focus:border-white/20"
                 placeholder="Summer Vacation 2024"
               />
             </div>
@@ -405,7 +491,7 @@ export default function NewTripPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="startDate" className="block text-sm font-medium text-slate-400 mb-2">
+                <label htmlFor="startDate" className="block text-sm font-medium text-slate-700 dark:text-slate-400 mb-2">
                   Start Date
                 </label>
                 <input
@@ -414,11 +500,11 @@ export default function NewTripPage() {
                   required
                   value={formData.startDate}
                   onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                  className="w-full px-4 py-2 bg-zinc-900/50 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-slate-400/20 focus:border-white/20"
+                  className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-zinc-900/50 dark:border-white/10 dark:text-white dark:focus:ring-slate-400/20 dark:focus:border-white/20"
                 />
               </div>
               <div>
-                <label htmlFor="endDate" className="block text-sm font-medium text-slate-400 mb-2">
+                <label htmlFor="endDate" className="block text-sm font-medium text-slate-700 dark:text-slate-400 mb-2">
                   End Date
                 </label>
                 <input
@@ -427,13 +513,13 @@ export default function NewTripPage() {
                   required
                   value={formData.endDate}
                   onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                  className="w-full px-4 py-2 bg-zinc-900/50 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-slate-400/20 focus:border-white/20"
+                  className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-zinc-900/50 dark:border-white/10 dark:text-white dark:focus:ring-slate-400/20 dark:focus:border-white/20"
                 />
               </div>
             </div>
 
             {error && (
-              <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-lg">
+              <div className="bg-red-100 border border-red-200 text-red-700 px-4 py-3 rounded-lg dark:bg-red-500/10 dark:border-red-500/30 dark:text-red-400">
                 {error}
               </div>
             )}
@@ -442,14 +528,14 @@ export default function NewTripPage() {
               <button
                 type="submit"
                 disabled={loading || !creatorProfile?.full_name}
-                className="flex-1 bg-slate-800 text-white px-6 py-3 rounded-lg font-semibold hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-white/10"
+                className="flex-1 bg-sky-200 text-slate-900 px-6 py-3 rounded-lg font-semibold hover:bg-sky-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700 dark:border-white/10"
               >
                 {loading ? 'Creating...' : 'Create Trip'}
               </button>
               <button
                 type="button"
                 onClick={() => router.back()}
-                className="px-6 py-3 border border-white/10 text-slate-300 rounded-lg font-semibold hover:bg-white/5 transition-colors"
+                className="px-6 py-3 border border-slate-200 text-slate-800 rounded-lg font-semibold hover:bg-slate-100 transition-colors dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5"
               >
                 Cancel
               </button>
