@@ -75,9 +75,19 @@ const getCityCode = (city: string): string => {
 };
 
 // TripCard component with image error handling
-function TripCard({ trip, index, onMemberClick }: { trip: UserTrip; index: number; onMemberClick: (userId: string | null, name: string, avatarUrl?: string | null) => void }) {
+function TripCard({
+  trip,
+  index,
+  imageUrl,
+  onMemberClick,
+}: {
+  trip: UserTrip;
+  index: number;
+  imageUrl?: string;
+  onMemberClick?: (userId: string | null, name: string, avatarUrl?: string | null) => void;
+}) {
   const router = useRouter();
-  const destinationImage = `https://source.unsplash.com/800x600/?${encodeURIComponent(trip.destination_city)},travel`;
+  const destinationImage = imageUrl || '';
   const memberAvatars = (trip.members || []).slice(0, 5);
   const [imageError, setImageError] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
@@ -105,18 +115,20 @@ function TripCard({ trip, index, onMemberClick }: { trip: UserTrip; index: numbe
     >
       {/* Dimmed Background Image with Error Fallback */}
       <div className="absolute inset-0 z-0">
-        {!imageError ? (
+        {!imageError && destinationImage ? (
           <img
             src={destinationImage}
             alt={`${trip.destination_city}, ${trip.destination_country}`}
-            className="w-full h-full object-cover opacity-30 group-hover:opacity-40 transition-opacity duration-700"
+            className="w-full h-full object-cover opacity-45 group-hover:opacity-60 transition-opacity duration-700"
             referrerPolicy="no-referrer"
+            loading="lazy"
+            decoding="async"
             onError={() => setImageError(true)}
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-indigo-950" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-white/90 via-white/60 to-white/30 dark:from-slate-950/90 dark:via-slate-900/60 dark:to-slate-900/40" />
+        <div className="absolute inset-0 bg-gradient-to-t from-white/80 via-white/45 to-white/20 dark:from-slate-950/85 dark:via-slate-900/50 dark:to-slate-900/30" />
       </div>
 
       {/* Card Content */}
@@ -220,12 +232,16 @@ export default function Home() {
   const [error, setError] = useState('');
   const [unreadByTrip, setUnreadByTrip] = useState<Record<string, number>>({});
   const [pendingRequests, setPendingRequests] = useState<JoinRequestView[]>([]);
-  const [userName, setUserName] = useState<string>('');
-  const [selectedMemberProfile, setSelectedMemberProfile] = useState<{
-    userId: string | null;
-    name: string;
-    avatarUrl?: string | null;
-  } | null>(null);
+const [tripImages, setTripImages] = useState<Record<string, string>>({});
+const tripImageCacheTtlMs = 1000 * 60 * 60 * 24 * 7;
+
+const [userName, setUserName] = useState<string>('');
+const [selectedMemberProfile, setSelectedMemberProfile] = useState<{
+  userId: string | null;
+  name: string;
+  avatarUrl?: string | null;
+} | null>(null);
+
 
   const fetchPendingRequests = useCallback(async () => {
     if (!user) return;
@@ -420,6 +436,53 @@ export default function Home() {
       channels.forEach((channel) => supabase.removeChannel(channel));
     };
   }, [user, trips]);
+
+  useEffect(() => {
+    if (!trips.length) return;
+
+    const fetchTripImages = async () => {
+      const updates: Record<string, string> = {};
+      await Promise.all(trips.map(async (trip) => {
+        const destination = `${trip.destination_city}, ${trip.destination_country}`;
+        const cacheKey = `trip_image_${destination.toLowerCase()}`;
+        if (typeof window !== 'undefined') {
+          const cached = localStorage.getItem(cacheKey);
+          if (cached) {
+            try {
+              const parsed = JSON.parse(cached) as { url: string; ts: number };
+              if (parsed?.url && Date.now() - parsed.ts < tripImageCacheTtlMs) {
+                updates[trip.id] = parsed.url;
+                return;
+              }
+            } catch {
+              // Ignore cache parsing errors.
+            }
+          }
+        }
+
+        try {
+          const response = await fetch(`/api/trip-image?destination=${encodeURIComponent(destination)}`);
+          if (!response.ok) return;
+          const data = await response.json();
+          const url = typeof data?.image === 'string' ? data.image : '';
+          if (url) {
+            updates[trip.id] = url;
+            if (typeof window !== 'undefined') {
+              localStorage.setItem(cacheKey, JSON.stringify({ url, ts: Date.now() }));
+            }
+          }
+        } catch (err) {
+          console.error('Error fetching trip image:', err);
+        }
+      }));
+
+      if (Object.keys(updates).length > 0) {
+        setTripImages((prev) => ({ ...prev, ...updates }));
+      }
+    };
+
+    fetchTripImages();
+  }, [trips]);
 
   useEffect(() => {
     if (!user) return;
@@ -620,14 +683,18 @@ export default function Home() {
               Upcoming Trips
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {trips.map((trip, index) => (
-              <TripCard 
-                key={trip.id} 
-                trip={trip} 
-                index={index} 
-                onMemberClick={(userId, name, avatarUrl) => setSelectedMemberProfile({ userId, name, avatarUrl })}
-              />
-            ))}
+{trips.map((trip, index) => (
+  <TripCard
+    key={trip.id}
+    trip={trip}
+    index={index}
+    imageUrl={tripImages[trip.id]}
+    onMemberClick={(userId, name, avatarUrl) =>
+      setSelectedMemberProfile({ userId, name, avatarUrl })
+    }
+  />
+))}
+
             </div>
           </div>
         )}
