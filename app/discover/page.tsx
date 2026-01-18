@@ -41,10 +41,17 @@ export default function DiscoverPage() {
   const [destinationsLoading, setDestinationsLoading] = useState(true);
   const [destinationsError, setDestinationsError] = useState('');
 
+  const visibleDestinations = destinations
+    .filter((dest) => !heartedDestinations.has(dest.id))
+    .slice(0, 8);
+  const wishlistDestinations = destinations.filter((dest) =>
+    heartedDestinations.has(dest.id)
+  );
+
   // Filter destinations by vibe
   const filteredDestinations = selectedVibe === 'all'
-    ? destinations
-    : destinations.filter(d => d.vibe === selectedVibe);
+    ? visibleDestinations
+    : visibleDestinations.filter((dest) => dest.vibe === selectedVibe);
 
   // Fetch trending destinations from Gemini
   useEffect(() => {
@@ -54,7 +61,7 @@ export default function DiscoverPage() {
       setDestinationsLoading(true);
       setDestinationsError('');
       try {
-        const response = await fetch('/api/trending-destinations?limit=8');
+        const response = await fetch('/api/trending-destinations?limit=24');
         if (!response.ok) {
           throw new Error('Failed to fetch trending destinations');
         }
@@ -446,16 +453,79 @@ export default function DiscoverPage() {
           </AnimatePresence>
         </div>
 
-        {/* Group Wishlist Section */}
-        {user && (
-          <div className="glass-card rounded-3xl p-6">
-            <h2 className="text-2xl font-bold text-white tracking-tight mb-4">Group Wishlist</h2>
-            <p className="text-slate-300 text-sm mb-4">
-              Destinations you and your travel groups want to visit together
-            </p>
-            <div className="text-slate-400 text-sm">Coming soon...</div>
-          </div>
-        )}
+        {/* Wishlist Section */}
+        <div className="glass-card rounded-3xl p-6">
+          <h2 className="text-2xl font-bold text-white tracking-tight mb-2">Wishlist</h2>
+          <p className="text-slate-300 text-sm mb-6">
+            Destinations you have liked from Trending Destinations
+          </p>
+          {!user && (
+            <div className="text-slate-400 text-sm">
+              Sign in to like destinations and build your wishlist.
+            </div>
+          )}
+          {user && wishlistDestinations.length === 0 && (
+            <div className="text-slate-400 text-sm">
+              Like a destination to add it to your wishlist.
+            </div>
+          )}
+          {user && wishlistDestinations.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {wishlistDestinations.map((dest) => (
+                <div
+                  key={dest.id}
+                  className="group rounded-2xl overflow-hidden bg-white/5 backdrop-blur-2xl border border-white/15"
+                >
+                  <div className="relative h-28">
+                    <div
+                      className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
+                      style={{ backgroundImage: `url(${dest.image})` }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+                    <motion.button
+                      onClick={(e) => toggleHeart(dest.id, e)}
+                      whileHover={{ scale: 1.15 }}
+                      whileTap={{ scale: 0.9 }}
+                      className="absolute right-3 top-3 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-all backdrop-blur-sm"
+                    >
+                      <Heart className="w-4 h-4 fill-red-500 text-red-500" />
+                    </motion.button>
+                  </div>
+                  <div className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h3 className="text-base font-bold text-white">{dest.name}</h3>
+                        <div className="flex items-center gap-2 text-slate-300 text-xs">
+                          {dest.countryCode && (
+                            <img
+                              src={getFlagUrl(dest.countryCode)}
+                              alt={`${dest.country} flag`}
+                              className="h-3 w-5 rounded-sm border border-white/20"
+                            />
+                          )}
+                          <span>{dest.country}</span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] uppercase tracking-wide text-slate-400">
+                        {dest.vibe}
+                      </span>
+                    </div>
+                    <p className="text-slate-300 text-xs mt-2 line-clamp-2">
+                      {dest.description}
+                    </p>
+                    <Link
+                      href={`/trips/new?destination=${encodeURIComponent(`${dest.name}, ${dest.country}`)}`}
+                      className="mt-3 inline-flex items-center px-3 py-2 bg-gradient-to-r from-indigo-600 to-violet-700 text-white rounded-lg font-semibold hover:from-indigo-700 hover:to-violet-800 transition-all text-xs shadow-lg shadow-indigo-600/30"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Start Planning →
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
