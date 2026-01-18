@@ -1119,6 +1119,8 @@ export default function SuggestionsPage() {
                           </div>
                         )}
                       </div>
+                  )}
+                </div>
 
                 <div className="card-surface rounded-2xl p-6">
                   <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-4 tracking-tight">✅ Approved Stays</h2>
@@ -1145,6 +1147,8 @@ export default function SuggestionsPage() {
                           </div>
                         )}
                       </div>
+                  )}
+                </div>
 
                 <div className="card-surface rounded-2xl p-6">
                   <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50 mb-4">✅ Approved Activities</h2>
@@ -1171,9 +1175,8 @@ export default function SuggestionsPage() {
                           </div>
                         )}
                       </div>
-                    </>
-                  );
-                })()}
+                  )}
+                </div>
               </>
             )}
           </div>
