@@ -23,17 +23,40 @@ export default function NewTripPage() {
     userName: '',
   });
 
-  // Prefill destination from query params
+  // Prefill destination and dates from query params
   useEffect(() => {
     const destination = searchParams?.get('destination');
+    const name = searchParams?.get('name');
+    const startDate = searchParams?.get('startDate');
+    const endDate = searchParams?.get('endDate');
     if (destination) {
       // Try to parse "City, Country" or just "City"
       const parts = destination.split(',').map(s => s.trim());
       if (parts.length === 2) {
-        setFormData(prev => ({ ...prev, city: parts[0], country: parts[1] }));
+        setFormData(prev => ({
+          ...prev,
+          name: prev.name || name || '',
+          city: prev.city || parts[0],
+          country: prev.country || parts[1],
+          startDate: prev.startDate || startDate || '',
+          endDate: prev.endDate || endDate || '',
+        }));
       } else {
-        setFormData(prev => ({ ...prev, city: parts[0] }));
+        setFormData(prev => ({
+          ...prev,
+          name: prev.name || name || '',
+          city: prev.city || parts[0],
+          startDate: prev.startDate || startDate || '',
+          endDate: prev.endDate || endDate || '',
+        }));
       }
+    } else if (startDate || endDate) {
+      setFormData(prev => ({
+        ...prev,
+        name: prev.name || name || '',
+        startDate: prev.startDate || startDate || '',
+        endDate: prev.endDate || endDate || '',
+      }));
     }
   }, [searchParams]);
 

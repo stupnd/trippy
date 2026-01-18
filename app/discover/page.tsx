@@ -207,7 +207,13 @@ export default function DiscoverPage() {
 
       const data = await response.json();
       if (data.destination) {
-        router.push(`/trips/new?destination=${encodeURIComponent(data.destination)}`);
+        const params = new URLSearchParams();
+        params.set('destination', data.destination);
+        if (data.trip_name) params.set('name', data.trip_name);
+        if (data.start_date) params.set('startDate', data.start_date);
+        if (data.end_date) params.set('endDate', data.end_date);
+        if (data.duration_days) params.set('duration', data.duration_days.toString());
+        router.push(`/trips/new?${params.toString()}`);
       }
     } catch (error) {
       console.error('Error generating surprise:', error);
