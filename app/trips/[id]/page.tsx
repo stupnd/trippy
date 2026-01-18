@@ -3,8 +3,8 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { format } from 'date-fns';
-import { motion, AnimatePresence } from 'framer-motion';
+import { format, differenceInCalendarDays } from 'date-fns';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { ArrowLeft, Plane, Hotel, Target, Calendar, Settings, Sparkles, Share2, Trash2, LogOut, Users, Circle, X, MessageCircle, Send } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth, useTripMember } from '@/lib/auth';
@@ -34,9 +34,26 @@ export default function TripDetailPage() {
   const [preferencesUpdatedAt, setPreferencesUpdatedAt] = useState<string | null>(null);
   const [budgetLoading, setBudgetLoading] = useState(false);
   const [budgetError, setBudgetError] = useState('');
+  const [budgetBreakdownOpen, setBudgetBreakdownOpen] = useState(false);
+  const [budgetTab, setBudgetTab] = useState<'breakdown' | 'itinerary'>('breakdown');
+  const [itineraryLoading, setItineraryLoading] = useState(false);
+  const [itineraryError, setItineraryError] = useState('');
+  const [itineraryDays, setItineraryDays] = useState<
+    {
+      date: string;
+      title: string;
+      budget_range?: string;
+      morning: string;
+      afternoon: string;
+      evening: string;
+      notes?: string;
+    }[]
+  >([]);
   const [editOpen, setEditOpen] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState('');
+  const [statusSaving, setStatusSaving] = useState(false);
+  const [statusError, setStatusError] = useState('');
   const [editForm, setEditForm] = useState({
     name: '',
     city: '',
@@ -48,6 +65,16 @@ export default function TripDetailPage() {
   const [membersDrawerOpen, setMembersDrawerOpen] = useState(false);
   const [drawerTab, setDrawerTab] = useState<'members' | 'chat'>('members');
   const [unreadCount, setUnreadCount] = useState(0);
+  const shouldReduceMotion = useReducedMotion();
+  const disableMotion = shouldReduceMotion;
+
+  const tripStatusOptions = [
+    { value: 'planning', label: 'Planning' },
+    { value: 'booked', label: 'Booked' },
+    { value: 'in_progress', label: 'In Progress' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'canceled', label: 'Canceled' },
+  ];
 
   // Auth protection
   useEffect(() => {
@@ -458,6 +485,74 @@ export default function TripDetailPage() {
     }
   };
 
+  const handleStatusChange = async (nextStatus: string) => {
+    if (!trip || !isCreator || nextStatus === (trip.status || 'planning')) return;
+
+    setStatusSaving(true);
+    setStatusError('');
+
+    try {
+      const { data, error: updateError } = await supabase
+        .from('trips')
+        .update({ status: nextStatus })
+        .eq('id', tripId)
+        .select('status')
+        .single();
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      setTrip((prev) => (prev ? { ...prev, status: data?.status ?? nextStatus } : prev));
+    } catch (updateError: any) {
+      console.error('Error updating trip status:', updateError);
+      setStatusError(updateError.message || 'Failed to update trip status');
+    } finally {
+      setStatusSaving(false);
+    }
+  };
+
+  const fetchAiItinerary = async () => {
+    if (!trip) return;
+
+    setItineraryLoading(true);
+    setItineraryError('');
+
+    try {
+      const cached = typeof window !== 'undefined' ? localStorage.getItem(`itinerary_${tripId}`) : null;
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setItineraryDays(parsed);
+          setItineraryLoading(false);
+          return;
+        }
+      }
+
+      const response = await fetch('/api/generate-trip-itinerary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trip_id: tripId }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate itinerary');
+      }
+
+      const days = Array.isArray(data.days) ? data.days : [];
+      setItineraryDays(days);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`itinerary_${tripId}`, JSON.stringify(days));
+      }
+    } catch (err: any) {
+      console.error('Error generating itinerary:', err);
+      setItineraryError(err.message || 'Failed to generate itinerary');
+    } finally {
+      setItineraryLoading(false);
+    }
+  };
+
   const handleDeleteTrip = async () => {
     if (!trip || !user || user.id !== trip.created_by) return;
     const confirmed = window.confirm(
@@ -536,6 +631,13 @@ export default function TripDetailPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trip?.id, members.length, preferencesUpdatedAt]);
+
+  useEffect(() => {
+    if (budgetBreakdownOpen && budgetTab === 'itinerary' && itineraryDays.length === 0 && !itineraryLoading) {
+      fetchAiItinerary();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [budgetBreakdownOpen, budgetTab]);
 
   // Handle Escape key to close drawer
   useEffect(() => {
@@ -630,6 +732,193 @@ export default function TripDetailPage() {
 
   return (
     <div className="min-h-screen">
+      <AnimatePresence initial={false} mode="wait">
+        {budgetBreakdownOpen && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4"
+            initial={disableMotion ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="glass-card w-full max-w-5xl rounded-3xl p-6 border border-white/10 max-h-[90vh] overflow-hidden"
+              initial={disableMotion ? false : { y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 20, opacity: 0 }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-2xl font-semibold text-white">Budget Breakdown</h2>
+                  <p className="text-sm text-slate-400">
+                    {trip.budget_min != null && trip.budget_max != null
+                      ? `Estimated range: $${trip.budget_min} - $${trip.budget_max} per person`
+                      : 'Budget range not set yet'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setBudgetBreakdownOpen(false)}
+                  className="text-slate-300 hover:text-white"
+                  aria-label="Close"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex gap-2 mb-6">
+                {['breakdown', 'itinerary'].map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setBudgetTab(tab as 'breakdown' | 'itinerary')}
+                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                      budgetTab === tab
+                        ? 'bg-white/10 text-white border border-white/20'
+                        : 'text-slate-400 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    {tab === 'breakdown' ? 'Budget Breakdown' : 'Suggested Itinerary'}
+                  </button>
+                ))}
+              </div>
+
+              {trip.budget_min == null || trip.budget_max == null ? (
+                <div className="glass-card p-6 rounded-2xl text-slate-300">
+                  Set preferences to generate a budget range first.
+                </div>
+              ) : (
+                <>
+                  {budgetTab === 'breakdown' && (() => {
+                    const nights = Math.max(
+                      1,
+                      differenceInCalendarDays(new Date(trip.end_date), new Date(trip.start_date)) || 1
+                    );
+                    const min = trip.budget_min || 0;
+                    const max = trip.budget_max || 0;
+                    const items = [
+                      { label: 'Flights', pct: 0.25, icon: '✈️' },
+                      { label: 'Lodging', pct: 0.4, icon: '🏨' },
+                      { label: 'Activities', pct: 0.2, icon: '🎯' },
+                      { label: 'Food', pct: 0.1, icon: '🍽️' },
+                      { label: 'Buffer', pct: 0.05, icon: '🛡️' },
+                    ];
+
+                    return (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {items.map((item) => (
+                          <div key={item.label} className="glass-card p-4 rounded-2xl">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2 text-white">
+                                <span className="text-lg">{item.icon}</span>
+                                <span className="font-semibold">{item.label}</span>
+                              </div>
+                              <span className="text-slate-300 text-sm">
+                                ${Math.round(min * item.pct)} - ${Math.round(max * item.pct)}
+                              </span>
+                            </div>
+                            <div className="text-xs text-slate-400">
+                              ~${Math.round((min * item.pct) / nights)} - ${Math.round((max * item.pct) / nights)} per night
+                            </div>
+                            <div className="mt-3 h-2 rounded-full bg-white/10 overflow-hidden">
+                              <div
+                                className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
+                                style={{ width: `${Math.round(item.pct * 100)}%` }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+
+                  {budgetTab === 'itinerary' && (() => {
+                    const days = Math.max(
+                      1,
+                      differenceInCalendarDays(new Date(trip.end_date), new Date(trip.start_date)) || 1
+                    );
+                    const perDayMin = Math.round((trip.budget_min || 0) / days);
+                    const perDayMax = Math.round((trip.budget_max || 0) / days);
+                    return (
+                      <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="text-sm text-slate-400">
+                            AI itinerary aligned to your budget (${perDayMin}-{perDayMax} / day)
+                          </div>
+                          <button
+                            onClick={() => {
+                              if (typeof window !== 'undefined') {
+                                localStorage.removeItem(`itinerary_${tripId}`);
+                              }
+                              setItineraryDays([]);
+                              fetchAiItinerary();
+                            }}
+                            className="px-3 py-1.5 rounded-xl text-xs font-medium text-slate-200 border border-white/10 hover:bg-white/10 transition-all"
+                          >
+                            Regenerate
+                          </button>
+                        </div>
+
+                        {itineraryLoading && (
+                          <div className="glass-card p-4 rounded-2xl text-slate-300 text-sm">
+                            Generating itinerary...
+                          </div>
+                        )}
+
+                        {itineraryError && (
+                          <div className="glass-card p-4 rounded-2xl text-red-200 text-sm border border-red-500/30 bg-red-500/10">
+                            {itineraryError}
+                          </div>
+                        )}
+
+                        {!itineraryLoading && itineraryDays.length === 0 && !itineraryError && (
+                          <div className="glass-card p-4 rounded-2xl text-slate-300 text-sm">
+                            No itinerary yet. Click regenerate to create one.
+                          </div>
+                        )}
+
+                        {!itineraryLoading && itineraryDays.length > 0 && (
+                          <>
+                            {itineraryDays.map((day, idx) => (
+                              <div key={`${day.date}-${idx}`} className="glass-card p-4 rounded-2xl">
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="text-white font-semibold">
+                                    Day {idx + 1} · {format(new Date(day.date), 'MMM d')}
+                                  </div>
+                                  <div className="text-xs text-slate-300">
+                                    {day.budget_range || `$${perDayMin} - $${perDayMax} / day`}
+                                  </div>
+                                </div>
+                                {day.title && (
+                                  <div className="text-sm text-slate-300 mb-3">{day.title}</div>
+                                )}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-slate-300">
+                                  <div className="rounded-xl bg-white/5 p-3">
+                                    <div className="text-slate-200 font-medium mb-1">Morning</div>
+                                    {day.morning}
+                                  </div>
+                                  <div className="rounded-xl bg-white/5 p-3">
+                                    <div className="text-slate-200 font-medium mb-1">Afternoon</div>
+                                    {day.afternoon}
+                                  </div>
+                                  <div className="rounded-xl bg-white/5 p-3">
+                                    <div className="text-slate-200 font-medium mb-1">Evening</div>
+                                    {day.evening}
+                                  </div>
+                                </div>
+                                {day.notes && (
+                                  <div className="text-xs text-slate-400 mt-3">{day.notes}</div>
+                                )}
+                              </div>
+                            ))}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <AnimatePresence>
         {editOpen && (
           <motion.div
@@ -758,18 +1047,49 @@ export default function TripDetailPage() {
             {budgetError && (
               <p className="text-xs text-red-300 mt-2">{budgetError}</p>
             )}
+            {statusError && (
+              <p className="text-xs text-red-300 mt-1">{statusError}</p>
+            )}
           </div>
 
           {/* Right Side: Badge & Action Buttons */}
           <div className="flex items-center gap-3 flex-shrink-0">
             {/* Budget Badge */}
-            <div className="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-slate-200 text-xs whitespace-nowrap">
+            <button
+              type="button"
+              onClick={() => {
+                setBudgetTab('breakdown');
+                setBudgetBreakdownOpen(true);
+              }}
+              className="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-slate-200 text-xs whitespace-nowrap hover:bg-white/10 transition-all"
+            >
               {budgetLoading ? (
                 <span>Budget: calculating...</span>
               ) : trip.budget_min != null && trip.budget_max != null ? (
                 <span>Budget: ${trip.budget_min} - ${trip.budget_max}</span>
               ) : (
                 <span>Budget: not set</span>
+              )}
+            </button>
+            <div className="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-slate-200 text-xs whitespace-nowrap flex items-center gap-2">
+              <span>
+                Status:{' '}
+                {tripStatusOptions.find((opt) => opt.value === (trip.status || 'planning'))?.label ||
+                  'Planning'}
+              </span>
+              {isCreator && (
+                <select
+                  value={trip.status || 'planning'}
+                  onChange={(e) => handleStatusChange(e.target.value)}
+                  disabled={statusSaving}
+                  className="bg-transparent text-slate-200 text-xs border border-white/10 rounded-lg px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                >
+                  {tripStatusOptions.map((option) => (
+                    <option key={option.value} value={option.value} className="text-slate-900">
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
               )}
             </div>
 
