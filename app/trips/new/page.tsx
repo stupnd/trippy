@@ -19,7 +19,6 @@ export default function NewTripPage() {
     country: '',
     startDate: '',
     endDate: '',
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     userName: '',
   });
 
@@ -92,7 +91,7 @@ export default function NewTripPage() {
           destination_country: formData.country,
           start_date: formData.startDate,
           end_date: formData.endDate,
-          timezone: formData.timezone,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           invite_code: inviteCode,
           created_by: user.id, // Use auth.uid()
           status: 'planning',
@@ -214,21 +213,6 @@ export default function NewTripPage() {
                   className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-50 dark:focus:ring-blue-500 dark:focus:border-blue-500"
                 />
               </div>
-            </div>
-
-            <div>
-              <label htmlFor="timezone" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
-                Timezone
-              </label>
-              <input
-                type="text"
-                id="timezone"
-                required
-                value={formData.timezone}
-                onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
-                className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-sky-300/60 focus:border-sky-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-50 dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                placeholder="America/New_York"
-              />
             </div>
 
             <div>
