@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
@@ -17,6 +16,19 @@ interface UserTrip extends TripRow {
   member_id: string;
   members?: Array<{ id: string; user_id: string | null; name: string; avatar_url: string | null }>;
   memberCount?: number;
+}
+
+interface JoinRequestView {
+  id: string;
+  trip_id: string;
+  status: 'pending' | 'approved' | 'rejected';
+  message: string;
+  created_at: string;
+  trip_name: string;
+  destination_city?: string | null;
+  destination_country?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
 }
 
 // Dynamic destination image URL using Unsplash - using curated photo IDs for reliability
@@ -63,6 +75,7 @@ const getCityCode = (city: string): string => {
 
 // TripCard component with image error handling
 function TripCard({ trip, index }: { trip: UserTrip; index: number }) {
+  const router = useRouter();
   const destinationImage = `https://source.unsplash.com/800x600/?${encodeURIComponent(trip.destination_city)},travel`;
   const memberAvatars = (trip.members || []).slice(0, 5);
   const [imageError, setImageError] = useState(false);
@@ -78,7 +91,16 @@ function TripCard({ trip, index }: { trip: UserTrip; index: number }) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: index * 0.1 }}
-      className="group relative rounded-[2.5rem] overflow-hidden bg-slate-900/60 backdrop-blur-2xl border border-white/10 hover:border-white/20 hover:scale-[1.02] hover:shadow-lg hover:shadow-cyan-500/10 transition-all"
+      onClick={() => router.push(`/trips/${trip.id}`)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          router.push(`/trips/${trip.id}`);
+        }
+      }}
+      role="link"
+      tabIndex={0}
+      className="group relative rounded-[2.5rem] overflow-hidden bg-slate-900/60 backdrop-blur-2xl border border-white/10 hover:border-white/20 hover:scale-[1.02] hover:shadow-lg hover:shadow-cyan-500/10 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
     >
       {/* Dimmed Background Image with Error Fallback */}
       <div className="absolute inset-0 z-0">
@@ -177,15 +199,8 @@ function TripCard({ trip, index }: { trip: UserTrip; index: number }) {
           </div>
         )}
 
-        {/* Action Button */}
-        <div className="mt-auto">
-          <Link
-            href={`/trips/${trip.id}`}
-            className="inline-flex items-center justify-center w-full px-4 py-3 rounded-xl font-semibold text-white transition-all bg-transparent border border-white/10 hover:border-white/20 hover:bg-white/5"
-          >
-            View Trip →
-          </Link>
-        </div>
+        {/* Action Spacer */}
+        <div className="mt-auto" />
       </div>
     </motion.div>
   );
@@ -198,6 +213,51 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [unreadByTrip, setUnreadByTrip] = useState<Record<string, number>>({});
+  const [pendingRequests, setPendingRequests] = useState<JoinRequestView[]>([]);
+
+  const fetchPendingRequests = useCallback(async () => {
+    if (!user) return;
+    try {
+      const { data: requests, error: requestsError } = await supabase
+        .from('join_requests')
+        .select('id, trip_id, status, message, created_at')
+        .eq('requester_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (requestsError) throw requestsError;
+
+      const pending = (requests || []).filter((req) => req.status === 'pending');
+      if (pending.length === 0) {
+        setPendingRequests([]);
+        return;
+      }
+
+      const tripIds = pending.map((req) => req.trip_id);
+      const { data: tripsData, error: tripsError } = await supabase
+        .from('trips')
+        .select('id, name, destination_city, destination_country, start_date, end_date')
+        .in('id', tripIds);
+
+      if (tripsError) throw tripsError;
+
+      const tripMap = new Map((tripsData || []).map((trip) => [trip.id, trip]));
+      const merged = pending.map((req) => {
+        const trip = tripMap.get(req.trip_id);
+        return {
+          ...req,
+          trip_name: trip?.name || 'Trip',
+          destination_city: trip?.destination_city,
+          destination_country: trip?.destination_country,
+          start_date: trip?.start_date,
+          end_date: trip?.end_date,
+        };
+      });
+
+      setPendingRequests(merged);
+    } catch (err) {
+      console.error('Error fetching pending requests:', err);
+    }
+  }, [user]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -210,7 +270,8 @@ export default function Home() {
 
     // User is logged in - fetch their trips
     fetchUserTrips();
-  }, [user, authLoading]);
+    fetchPendingRequests();
+  }, [user, authLoading, fetchPendingRequests]);
 
   const fetchUserTrips = async () => {
     try {
@@ -345,6 +406,29 @@ export default function Home() {
     };
   }, [user, trips]);
 
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`home_requests_${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'join_requests',
+          filter: `requester_id=eq.${user.id}`,
+        },
+        () => {
+          fetchPendingRequests();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, fetchPendingRequests]);
+
   // Show loading skeleton while checking auth
   if (authLoading || loading) {
     return (
@@ -402,6 +486,58 @@ export default function Home() {
         {error && (
           <div className="bg-red-100 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 dark:bg-red-900 dark:border-red-700 dark:text-red-100">
             {error}
+          </div>
+        )}
+
+        {pendingRequests.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Pending Join Requests</h2>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  We will notify you when a trip owner approves or rejects your request.
+                </p>
+              </div>
+              <Link
+                href="/community"
+                className="text-sm font-semibold text-slate-700 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+              >
+                View community
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {pendingRequests.map((request) => (
+                <div
+                  key={request.id}
+                  className="glass-card rounded-2xl p-5 border border-slate-200/60 dark:border-white/10 bg-white/70 dark:bg-slate-900/40"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                        {request.trip_name}
+                      </h3>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">
+                        {request.destination_city}
+                        {request.destination_country ? `, ${request.destination_country}` : ''}
+                      </p>
+                    </div>
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full border bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30">
+                      Pending
+                    </span>
+                  </div>
+                  {request.start_date && request.end_date && (
+                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                      {format(new Date(request.start_date), 'MMM d')} - {format(new Date(request.end_date), 'MMM d, yyyy')}
+                    </div>
+                  )}
+                  {request.message && (
+                    <p className="text-sm text-slate-700 dark:text-slate-300 mt-3 line-clamp-2">
+                      "{request.message}"
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

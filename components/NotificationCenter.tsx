@@ -3,14 +3,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, MessageCircle, UserPlus, Clock, ChevronRight, Check, X as XIcon, CheckCheck } from 'lucide-react';
+import { X, MessageCircle, UserPlus, Clock, ChevronRight, Check, X as XIcon, CheckCheck, CheckCircle2, XCircle } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { formatDistanceToNow } from 'date-fns';
 
 interface Notification {
   id: string;
-  type: 'message' | 'trip_request';
+  type: 'message' | 'trip_request' | 'request_update';
   trip_id: string;
   trip_name: string;
   sender_name: string;
@@ -96,77 +96,74 @@ export default function NotificationCenter({ isOpen, onClose, onNotificationRead
           .select('trip_id, id, user_id')
           .eq('user_id', user.id);
 
-        if (!memberships || memberships.length === 0) {
-          setNotifications([]);
-          setLoading(false);
-          return;
-        }
+        const tripIds = (memberships || []).map(m => m.trip_id);
+        const memberIds = new Set((memberships || []).map(m => m.id));
 
-        const tripIds = memberships.map(m => m.trip_id);
-        const memberIds = new Set(memberships.map(m => m.id));
+        let messageNotifications: Notification[] = [];
+        if (tripIds.length > 0) {
+          // Fetch recent messages from trips (last 50, excluding user's own messages)
+          const { data: messages, error: messagesError } = await supabase
+            .from('messages')
+            .select('id, trip_id, member_id, content, created_at')
+            .in('trip_id', tripIds)
+            .order('created_at', { ascending: false })
+            .limit(50);
 
-        // Fetch recent messages from trips (last 50, excluding user's own messages)
-        const { data: messages, error: messagesError } = await supabase
-          .from('messages')
-          .select('id, trip_id, member_id, content, created_at')
-          .in('trip_id', tripIds)
-          .order('created_at', { ascending: false })
-          .limit(50);
+          if (messagesError) {
+            console.error('Error fetching messages:', messagesError);
+          }
 
-        if (messagesError) {
-          console.error('Error fetching messages:', messagesError);
-        }
-
-        // Fetch trip details for all trips
-        const { data: trips } = await supabase
-          .from('trips')
-          .select('id, name')
-          .in('id', tripIds);
-
-        const tripMap = new Map((trips || []).map(t => [t.id, t.name]));
-
-        // Fetch member details for message senders
-        const allMemberIds = new Set<string>();
-        if (messages) {
-          messages.forEach(msg => {
-            if (!memberIds.has(msg.member_id)) {
-              allMemberIds.add(msg.member_id);
-            }
-          });
-        }
-
-        const memberIdsArray = Array.from(allMemberIds);
-        let memberMap = new Map<string, string>();
-
-        if (memberIdsArray.length > 0) {
-          const { data: members } = await supabase
-            .from('trip_members')
+          // Fetch trip details for all trips
+          const { data: trips } = await supabase
+            .from('trips')
             .select('id, name')
-            .in('id', memberIdsArray);
+            .in('id', tripIds);
 
-          if (members) {
-            members.forEach(m => {
-              memberMap.set(m.id, m.name);
+          const tripMap = new Map((trips || []).map(t => [t.id, t.name]));
+
+          // Fetch member details for message senders
+          const allMemberIds = new Set<string>();
+          if (messages) {
+            messages.forEach(msg => {
+              if (!memberIds.has(msg.member_id)) {
+                allMemberIds.add(msg.member_id);
+              }
             });
           }
-        }
 
-        // Build notification list from messages
-        const messageNotifications: Notification[] = (messages || [])
-          .filter(msg => !memberIds.has(msg.member_id)) // Only messages from others
-          .map(msg => {
-            const notificationId = `msg_${msg.id}`;
-            return {
-              id: notificationId,
-              type: 'message' as const,
-              trip_id: msg.trip_id,
-              trip_name: tripMap.get(msg.trip_id) || 'Unknown Trip',
-              sender_name: memberMap.get(msg.member_id) || 'Unknown',
-              content: msg.content || '',
-              created_at: msg.created_at,
-              read: readSet.has(notificationId),
-            };
-          });
+          const memberIdsArray = Array.from(allMemberIds);
+          let memberMap = new Map<string, string>();
+
+          if (memberIdsArray.length > 0) {
+            const { data: members } = await supabase
+              .from('trip_members')
+              .select('id, name')
+              .in('id', memberIdsArray);
+
+            if (members) {
+              members.forEach(m => {
+                memberMap.set(m.id, m.name);
+              });
+            }
+          }
+
+          // Build notification list from messages
+          messageNotifications = (messages || [])
+            .filter(msg => !memberIds.has(msg.member_id)) // Only messages from others
+            .map(msg => {
+              const notificationId = `msg_${msg.id}`;
+              return {
+                id: notificationId,
+                type: 'message' as const,
+                trip_id: msg.trip_id,
+                trip_name: tripMap.get(msg.trip_id) || 'Unknown Trip',
+                sender_name: memberMap.get(msg.member_id) || 'Unknown',
+                content: msg.content || '',
+                created_at: msg.created_at,
+                read: readSet.has(notificationId),
+              };
+            });
+        }
 
         // Fetch trip requests from join_requests table (pending requests for trips you created)
         const { data: userTrips } = await supabase
@@ -178,6 +175,7 @@ export default function NotificationCenter({ isOpen, onClose, onNotificationRead
         const userTripMap = new Map((userTrips || []).map(t => [t.id, t.name]));
 
         let requestNotifications: Notification[] = [];
+        let requestStatusNotifications: Notification[] = [];
 
         if (userTripIds.length > 0) {
           // Fetch pending join requests for trips you created
@@ -211,8 +209,47 @@ export default function NotificationCenter({ isOpen, onClose, onNotificationRead
           }
         }
 
+        // Fetch request updates for trips you requested to join
+        const { data: requesterRequests, error: requesterError } = await supabase
+          .from('join_requests')
+          .select('id, trip_id, status, message, created_at')
+          .eq('requester_id', user.id)
+          .in('status', ['approved', 'rejected'])
+          .order('created_at', { ascending: false })
+          .limit(20);
+
+        if (requesterError) {
+          console.error('Error fetching request updates:', requesterError);
+        } else if (requesterRequests && requesterRequests.length > 0) {
+          const requestTripIds = Array.from(new Set(requesterRequests.map(req => req.trip_id)));
+          const { data: requestTrips } = await supabase
+            .from('trips')
+            .select('id, name')
+            .in('id', requestTripIds);
+          const requestTripMap = new Map((requestTrips || []).map(t => [t.id, t.name]));
+
+          requestStatusNotifications = requesterRequests.map(request => {
+            const notificationId = `req_status_${request.id}`;
+            const statusLabel = request.status === 'approved' ? 'approved' : 'rejected';
+            return {
+              id: notificationId,
+              type: 'request_update',
+              trip_id: request.trip_id,
+              trip_name: requestTripMap.get(request.trip_id) || 'Unknown Trip',
+              sender_name: `Join request ${statusLabel}`,
+              content:
+                request.status === 'approved'
+                  ? 'Your join request was approved. You can open the trip now.'
+                  : 'Your join request was declined. You can try another trip.',
+              created_at: request.created_at,
+              read: readSet.has(notificationId),
+              status: request.status as 'approved' | 'rejected',
+            };
+          });
+        }
+
         // Combine and sort by date
-        const allNotifications = [...messageNotifications, ...requestNotifications]
+        const allNotifications = [...messageNotifications, ...requestNotifications, ...requestStatusNotifications]
           .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
           .slice(0, 30); // Limit to 30 most recent
 
@@ -309,6 +346,12 @@ export default function NotificationCenter({ isOpen, onClose, onNotificationRead
     } else if (notification.type === 'trip_request') {
       // Navigate to requests page
       router.push(`/trips/${notification.trip_id}/requests`);
+    } else if (notification.type === 'request_update') {
+      if (notification.status === 'approved') {
+        router.push(`/trips/${notification.trip_id}`);
+      } else {
+        router.push('/community');
+      }
     }
 
     onClose();
@@ -391,22 +434,31 @@ export default function NotificationCenter({ isOpen, onClose, onNotificationRead
     }
   };
 
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
+  const getNotificationIcon = (notification: Notification) => {
+    switch (notification.type) {
       case 'message':
         return <MessageCircle className="w-4 h-4" />;
       case 'trip_request':
         return <UserPlus className="w-4 h-4" />;
+      case 'request_update':
+        return notification.status === 'approved'
+          ? <CheckCircle2 className="w-4 h-4" />
+          : <XCircle className="w-4 h-4" />;
       default:
         return <Clock className="w-4 h-4" />;
     }
   };
 
   const getNotificationColor = (type: string, read: boolean) => {
-    const baseColor =
-      type === 'message'
-        ? 'bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-500/20 dark:text-indigo-300 dark:border-indigo-500/30'
-        : 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30';
+    const baseColor = (() => {
+      if (type === 'message') {
+        return 'bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-500/20 dark:text-indigo-300 dark:border-indigo-500/30';
+      }
+      if (type === 'request_update') {
+        return 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30';
+      }
+      return 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30';
+    })();
     return read ? `${baseColor} opacity-70` : baseColor;
   };
 
@@ -482,7 +534,7 @@ export default function NotificationCenter({ isOpen, onClose, onNotificationRead
                   <div className="flex items-start gap-3">
                     {/* Icon */}
                     <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center border ${getNotificationColor(notification.type, notification.read)}`}>
-                      {getNotificationIcon(notification.type)}
+                      {getNotificationIcon(notification)}
                     </div>
 
                     {/* Content */}
@@ -527,6 +579,16 @@ export default function NotificationCenter({ isOpen, onClose, onNotificationRead
                           <XIcon className="w-4 h-4" />
                         </button>
                       </div>
+                    ) : notification.type === 'request_update' ? (
+                      <span
+                        className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
+                          notification.status === 'approved'
+                            ? 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30'
+                            : 'bg-red-100 text-red-700 border-red-200 dark:bg-red-500/20 dark:text-red-300 dark:border-red-500/30'
+                        }`}
+                      >
+                        {notification.status === 'approved' ? 'Approved' : 'Rejected'}
+                      </span>
                     ) : (
                       <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-slate-700 transition-colors flex-shrink-0 mt-1 dark:group-hover:text-slate-300" />
                     )}

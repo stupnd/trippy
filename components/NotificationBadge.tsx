@@ -77,6 +77,7 @@ export default function NotificationBadge() {
 
         const userTripIds = (userTrips || []).map(t => t.id);
         let unreadRequestCount = 0;
+        let unreadRequestUpdates = 0;
 
         if (userTripIds.length > 0) {
           const { data: joinRequests, error: requestsError } = await supabase
@@ -95,8 +96,24 @@ export default function NotificationBadge() {
           }
         }
 
+        // Fetch request updates for trips the user requested to join
+        const { data: requestUpdates, error: updatesError } = await supabase
+          .from('join_requests')
+          .select('id')
+          .eq('requester_id', user.id)
+          .in('status', ['approved', 'rejected']);
+
+        if (!updatesError && requestUpdates) {
+          requestUpdates.forEach(update => {
+            const notificationId = `req_status_${update.id}`;
+            if (!readSet.has(notificationId)) {
+              unreadRequestUpdates++;
+            }
+          });
+        }
+
         // Total unread notifications
-        setNotificationCount(unreadMessageCount + unreadRequestCount);
+        setNotificationCount(unreadMessageCount + unreadRequestCount + unreadRequestUpdates);
       } catch (error) {
         console.error('Error fetching notification count:', error);
       }
