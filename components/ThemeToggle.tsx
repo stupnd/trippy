@@ -25,7 +25,7 @@ export default function ThemeToggle() {
     <button
       type="button"
       onClick={toggleTheme}
-      className={`${positionClass} flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold shadow-lg backdrop-blur-xl transition-colors ${className} ${
+      className={`fixed top-4 right-4 z-50 flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold shadow-lg backdrop-blur-xl transition-colors ${
         isDark
           ? 'border border-white/20 bg-slate-900/70 text-slate-100 hover:bg-slate-900/80'
           : 'border border-sky-200 bg-sky-200 text-slate-900 hover:bg-sky-300'
