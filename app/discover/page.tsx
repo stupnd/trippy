@@ -125,7 +125,6 @@ export default function DiscoverPage() {
         spread: 60,
         origin: { x: e.clientX / window.innerWidth, y: e.clientY / window.innerHeight },
         colors: ['#ef4444', '#f97316', '#fbbf24'],
-        shapes: ['heart'],
       });
     }
 
@@ -198,14 +197,14 @@ export default function DiscoverPage() {
     : undefined;
 
   return (
-    <div className="min-h-screen pb-8">
+    <div className="min-h-screen pb-8 bg-slate-50 dark:bg-slate-900">
       <div className="container mx-auto px-4 md:px-8 max-w-7xl">
         {/* Page Title - Editorial Style */}
         <div className="mb-10">
-          <h1 className="text-6xl md:text-7xl font-black text-white tracking-tighter mb-4 leading-none">
+          <h1 className="text-6xl md:text-7xl font-black text-slate-900 dark:text-white tracking-tighter mb-4 leading-none">
             DISCOVER
           </h1>
-          <p className="text-slate-300 text-lg">Explore trending destinations and plan your next adventure</p>
+          <p className="text-slate-700 dark:text-slate-300 text-lg">Explore trending destinations and plan your next adventure</p>
         </div>
 
         {/* Vibe Filters */}
@@ -221,7 +220,7 @@ export default function DiscoverPage() {
                 className={`px-6 py-3 rounded-full font-semibold text-sm transition-all flex items-center gap-2 ${
                   selectedVibe === filter.id
                     ? 'bg-gradient-to-r from-indigo-600 to-violet-700 text-white shadow-lg shadow-indigo-600/50'
-                    : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/20'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10 dark:border-white/20'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -357,7 +356,7 @@ export default function DiscoverPage() {
             }
           }}
         >
-          <div className="relative w-full h-[500px] rounded-3xl overflow-hidden bg-white/5 backdrop-blur-2xl border border-white/20">
+          <div className="relative w-full h-[500px] rounded-3xl overflow-hidden bg-white/70 dark:bg-white/5 backdrop-blur-2xl border border-slate-200 dark:border-white/20">
             {/* Map Background */}
             <div
               className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-40"
@@ -426,7 +425,7 @@ export default function DiscoverPage() {
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
-                className="fixed bg-white/5 backdrop-blur-2xl border border-white/20 rounded-2xl p-4 shadow-2xl z-50 pointer-events-none whitespace-nowrap"
+                className="fixed bg-white/80 dark:bg-white/5 backdrop-blur-2xl border border-slate-200 dark:border-white/20 rounded-2xl p-4 shadow-2xl z-50 pointer-events-none whitespace-nowrap"
                 style={{
                   left: `${poiPreview.x + 20}px`,
                   top: `${poiPreview.y - 80}px`,
