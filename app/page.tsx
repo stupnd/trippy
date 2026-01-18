@@ -232,8 +232,9 @@ export default function Home() {
   const [error, setError] = useState('');
   const [unreadByTrip, setUnreadByTrip] = useState<Record<string, number>>({});
   const [pendingRequests, setPendingRequests] = useState<JoinRequestView[]>([]);
-const [tripImages, setTripImages] = useState<Record<string, string>>({});
-const tripImageCacheTtlMs = 1000 * 60 * 60 * 24 * 7;
+  const [hasMounted, setHasMounted] = useState(false);
+  const [tripImages, setTripImages] = useState<Record<string, string>>({});
+  const tripImageCacheTtlMs = 1000 * 60 * 60 * 24 * 7;
 
 const [userName, setUserName] = useState<string>('');
 const [selectedMemberProfile, setSelectedMemberProfile] = useState<{
@@ -418,7 +419,7 @@ const [selectedMemberProfile, setSelectedMemberProfile] = useState<{
           return {
             ...trip,
             joined_at: membership?.joined_at || '',
-            member_name: userProfile?.full_name || '',
+            member_name: userName || '',
             member_id: membership?.id || '',
             members: membersWithAvatars,
             memberCount: membersWithAvatars.length,
