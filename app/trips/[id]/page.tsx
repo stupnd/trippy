@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { format, differenceInCalendarDays } from 'date-fns';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { ArrowLeft, Plane, Hotel, Target, Calendar, Settings, Sparkles, Share2, Trash2, LogOut, Users, Circle, X, MessageCircle, Send } from 'lucide-react';
+import { ArrowLeft, Plane, Hotel, Target, Calendar, Utensils, Settings, Sparkles, Share2, Trash2, LogOut, Users, Circle, X, MessageCircle, Send } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth, useTripMember } from '@/lib/auth';
 import { TripRow, TripMemberRow } from '@/lib/supabase';
@@ -1503,12 +1503,13 @@ export default function TripDetailPage() {
         </div>
 
         {/* Progress Overview - Module Cards with Staggered Animation */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-6">
           {[
             { title: 'Flights', icon: Plane, status: getModuleStatus('flights'), href: `/trips/${tripId}/suggestions?tab=flights` },
             { title: 'Accommodations', icon: Hotel, status: getModuleStatus('accommodations'), href: `/trips/${tripId}/suggestions?tab=stays` },
             { title: 'Activities', icon: Target, status: getModuleStatus('activities'), href: `/trips/${tripId}/suggestions?tab=activities` },
             { title: 'Itinerary', icon: Calendar, status: getModuleStatus('itinerary'), href: `/trips/${tripId}/suggestions?tab=itinerary` },
+            { title: 'Food Recommendations', icon: Utensils, status: getModuleStatus('food'), href: `/trips/${tripId}/food` },
           ].map((module, index) => (
             <motion.div
               key={module.title}
