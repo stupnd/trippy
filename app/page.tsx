@@ -288,6 +288,54 @@ const [selectedMemberProfile, setSelectedMemberProfile] = useState<{
   }, [user]);
 
   useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
+  // Fetch user profile immediately when user is available
+  useEffect(() => {
+    if (!user || authLoading) return;
+
+    const fetchUserName = async () => {
+      try {
+        const { data: userProfile } = await supabase
+          .from('profiles')
+          .select('full_name, name')
+          .eq('id', user.id)
+          .maybeSingle();
+        
+        // Priority 1: Use full_name if it's not empty
+        // Priority 2: Use name if full_name is missing
+        // Priority 3: If both are missing, use the prefix of the user's email
+        // Priority 4: If all else fails, default to "Stuti"
+        let displayName = 'Stuti';
+        
+        if (userProfile?.full_name && userProfile.full_name.trim()) {
+          displayName = userProfile.full_name;
+        } else if (userProfile?.name && userProfile.name.trim()) {
+          displayName = userProfile.name;
+        } else if (user?.email) {
+          // Extract username from email and capitalize first letter
+          const emailUsername = user.email.split('@')[0];
+          displayName = emailUsername.charAt(0).toUpperCase() + emailUsername.slice(1);
+        }
+        
+        setUserName(displayName);
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+        // Fallback to email or default
+        if (user?.email) {
+          const emailUsername = user.email.split('@')[0];
+          setUserName(emailUsername.charAt(0).toUpperCase() + emailUsername.slice(1));
+        } else {
+          setUserName('Stuti');
+        }
+      }
+    };
+
+    fetchUserName();
+  }, [user, authLoading]);
+
+  useEffect(() => {
     if (authLoading) return;
 
     if (!user) {
@@ -317,16 +365,6 @@ const [selectedMemberProfile, setSelectedMemberProfile] = useState<{
         setLoading(false);
         return;
       }
-
-      // Fetch profile for current user
-      const { data: userProfile } = await supabase
-        .from('profiles')
-        .select('full_name')
-        .eq('id', user!.id)
-        .maybeSingle();
-      
-      // Store user's name
-      setUserName(userProfile?.full_name || '');
 
       // Fetch trip details for each membership
       const tripIds = memberships.map((m) => m.trip_id);
@@ -539,10 +577,22 @@ const [selectedMemberProfile, setSelectedMemberProfile] = useState<{
       <div className="container mx-auto px-4 md:px-8 max-w-7xl">
         {/* Header */}
         <div className="mb-10">
-          <h1 className="text-6xl md:text-7xl font-black text-slate-900 dark:text-white tracking-tighter mb-4 leading-none">
-            {userName ? `${userName}'s Trips` : "My Trips"}
-          </h1>
-          <p className="text-slate-700 dark:text-slate-300 text-lg">Manage and view all your trips</p>
+          {hasMounted && userName ? (
+            <h1 
+              className="text-6xl md:text-7xl font-black text-slate-900 dark:text-white tracking-tighter mb-4 leading-none uppercase"
+              style={{ 
+                textShadow: '0 0 40px rgba(99, 102, 241, 0.1)',
+                filter: 'drop-shadow(0 0 20px rgba(99, 102, 241, 0.15))'
+              }}
+            >
+              {`${userName.toUpperCase()}'S TRIPS`}
+            </h1>
+          ) : (
+            <div className="h-20 bg-white/5 rounded-2xl w-64 mb-4 animate-pulse"></div>
+          )}
+          <p className="text-slate-400 dark:text-slate-400 font-medium tracking-widest uppercase text-sm">
+            MANAGE AND VIEW ALL YOUR TRIPS
+          </p>
         </div>
         <div className="flex justify-end items-center mb-10 -mt-6">
           <div className="flex gap-3">
