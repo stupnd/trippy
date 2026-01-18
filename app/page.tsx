@@ -85,8 +85,7 @@ function TripCard({
   index: number;
   imageUrl?: string;
   onMemberClick?: (userId: string | null, name: string, avatarUrl?: string | null) => void;
-}) { /* ... */ }
-
+}) {
   const router = useRouter();
   const destinationImage = imageUrl || '';
   const memberAvatars = (trip.members || []).slice(0, 5);
