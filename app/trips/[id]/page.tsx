@@ -1037,6 +1037,27 @@ export default function TripDetailPage() {
 
       {/* Header - Transparent Section */}
       <div className="container mx-auto px-4 md:px-8 max-w-7xl pb-10">
+        {unreadCount > 0 && drawerTab !== 'chat' && (
+          <button
+            type="button"
+            onClick={() => {
+              setMembersDrawerOpen(true);
+              setDrawerTab('chat');
+              setUnreadCount(0);
+            }}
+            className="w-full mb-4 glass-card border border-blue-500/30 bg-blue-500/10 text-blue-100 rounded-2xl px-4 py-3 flex items-center justify-between hover:bg-blue-500/20 transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <MessageCircle className="w-4 h-4" />
+              <span className="text-sm">
+                New chat message{unreadCount > 1 ? 's' : ''} in this trip
+              </span>
+            </div>
+            <span className="text-xs font-semibold bg-blue-500 text-white px-2 py-1 rounded-full">
+              View chat
+            </span>
+          </button>
+        )}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
           {/* Left Side: Title & Location */}
           <div className="flex-1 min-w-0">
