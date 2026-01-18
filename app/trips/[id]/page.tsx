@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -932,7 +932,7 @@ export default function TripDetailPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setMembersDrawerOpen(false)}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[90]"
             />
 
             {/* Drawer */}
@@ -945,9 +945,9 @@ export default function TripDetailPage() {
                 damping: 30,
                 stiffness: 300,
               }}
-              className="fixed top-0 right-0 h-full w-full max-w-md bg-slate-900/80 backdrop-blur-xl border-l border-white/20 z-50 shadow-2xl"
+              className="fixed top-16 right-0 h-[calc(100vh-4rem)] w-full max-w-md bg-slate-900/95 backdrop-blur-2xl border-l border-white/20 z-[100] shadow-2xl"
             >
-            <div className="h-full flex flex-col">
+            <div className="h-full flex flex-col pt-4">
               {/* Header */}
               <div className="p-6 border-b border-white/20">
                 <div className="flex items-center justify-between mb-4">
@@ -961,7 +961,7 @@ export default function TripDetailPage() {
                   </div>
                   <button
                     onClick={() => setMembersDrawerOpen(false)}
-                    className="glass-card p-2 rounded-xl hover:bg-white/10 transition-colors"
+                    className="glass-card p-2 rounded-xl hover:bg-white/10 transition-colors z-10 relative"
                     aria-label="Close drawer"
                   >
                     <X className="w-5 h-5 text-slate-300" />
@@ -969,7 +969,7 @@ export default function TripDetailPage() {
                 </div>
 
                 {/* Tab Switcher */}
-                <div className="flex gap-2">
+                <div className="flex gap-2 mt-4">
                   <button
                     onClick={() => setDrawerTab('members')}
                     className={`flex-1 px-4 py-2 rounded-xl font-medium text-sm transition-all ${
@@ -1128,7 +1128,10 @@ function DrawerChat({ tripId, members }: { tripId: string; members: MemberWithSt
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingChannelRef = useRef<any>(null);
 
   // Get member color matching drawer avatars
   const getMemberColor = (memberId: string) => {
@@ -1174,7 +1177,7 @@ function DrawerChat({ tripId, members }: { tripId: string; members: MemberWithSt
     fetchMessages();
   }, [tripId, members]);
 
-  // Set up realtime subscription
+  // Set up realtime subscription for messages
   useEffect(() => {
     const channel = supabase
       .channel(`trip_messages_${tripId}`)
@@ -1202,6 +1205,116 @@ function DrawerChat({ tripId, members }: { tripId: string; members: MemberWithSt
     };
   }, [tripId, members]);
 
+  // Set up realtime subscription for typing indicators
+  useEffect(() => {
+    if (!currentMember) return;
+
+    const typingChannel = supabase.channel(`trip_typing_${tripId}`, {
+      config: {
+        broadcast: { self: false },
+      },
+    });
+
+    typingChannel
+      .on('broadcast', { event: 'typing' }, (payload) => {
+        const { member_id, is_typing } = payload.payload || {};
+        
+        if (!member_id) return;
+        
+        // Don't show typing indicator for self
+        if (member_id === currentMember.id) return;
+
+        if (is_typing) {
+          setTypingUsers((prev) => {
+            const next = new Set(prev);
+            next.add(member_id);
+            return next;
+          });
+          // Clear typing indicator after 3 seconds of inactivity
+          setTimeout(() => {
+            setTypingUsers((prev) => {
+              const next = new Set(prev);
+              next.delete(member_id);
+              return next;
+            });
+          }, 3000);
+        } else {
+          setTypingUsers((prev) => {
+            const next = new Set(prev);
+            next.delete(member_id);
+            return next;
+          });
+        }
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('Typing channel subscribed');
+        }
+      });
+
+    typingChannelRef.current = typingChannel;
+
+    return () => {
+      if (typingChannelRef.current) {
+        supabase.removeChannel(typingChannelRef.current);
+      }
+    };
+  }, [tripId, currentMember]);
+
+  // Broadcast typing status
+  const broadcastTyping = useCallback((isTyping: boolean) => {
+    if (!currentMember) return;
+    
+    const channel = typingChannelRef.current;
+    if (!channel) {
+      return;
+    }
+    
+    // Check if channel is ready
+    const channelState = (channel as any).state;
+    if (channelState !== 'joined' && channelState !== 'SUBSCRIBED') {
+      // Try again after a short delay
+      setTimeout(() => broadcastTyping(isTyping), 100);
+      return;
+    }
+
+    channel.send({
+      type: 'broadcast',
+      event: 'typing',
+      payload: {
+        member_id: currentMember.id,
+        member_name: currentMember.name,
+        is_typing: isTyping,
+      },
+    }).catch((err) => {
+      console.error('Broadcast error:', err);
+    });
+  }, [currentMember]);
+
+  // Handle typing with debounce
+  const handleTyping = () => {
+    if (!newMessage.trim()) {
+      broadcastTyping(false);
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      return;
+    }
+
+    // Broadcast that we're typing
+    broadcastTyping(true);
+
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    // Stop typing indicator after 3 seconds of inactivity
+    typingTimeoutRef.current = setTimeout(() => {
+      broadcastTyping(false);
+    }, 3000);
+  };
+
   // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -1223,6 +1336,10 @@ function DrawerChat({ tripId, members }: { tripId: string; members: MemberWithSt
 
       if (error) throw error;
       setNewMessage('');
+      broadcastTyping(false); // Stop typing indicator when message is sent
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
     } catch (error: any) {
       console.error('Error sending message:', error);
       alert(error?.message || 'Failed to send message.');
@@ -1289,6 +1406,44 @@ function DrawerChat({ tripId, members }: { tripId: string; members: MemberWithSt
             );
           })
         )}
+
+        {/* Typing Indicators */}
+        {typingUsers.size > 0 && (
+          <div className="flex justify-start">
+            <div className="flex flex-col max-w-[75%]">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs text-slate-400">
+                  {Array.from(typingUsers)
+                    .map((memberId) => {
+                      const member = members.find(m => m.id === memberId || m.user_id === memberId);
+                      return member?.name || 'Someone';
+                    })
+                    .join(', ')}
+                  {typingUsers.size === 1 ? ' is' : ' are'} typing
+                </span>
+              </div>
+              <div className="bg-white/10 text-slate-200 border border-white/20 rounded-2xl px-4 py-3">
+                <div className="flex gap-1 items-center">
+                  <motion.div
+                    className="w-2 h-2 bg-slate-400 rounded-full"
+                    animate={{ y: [0, -8, 0] }}
+                    transition={{ duration: 0.6, repeat: Infinity, delay: 0 }}
+                  />
+                  <motion.div
+                    className="w-2 h-2 bg-slate-400 rounded-full"
+                    animate={{ y: [0, -8, 0] }}
+                    transition={{ duration: 0.6, repeat: Infinity, delay: 0.2 }}
+                  />
+                  <motion.div
+                    className="w-2 h-2 bg-slate-400 rounded-full"
+                    animate={{ y: [0, -8, 0] }}
+                    transition={{ duration: 0.6, repeat: Infinity, delay: 0.4 }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         <div ref={messagesEndRef} />
       </div>
 
@@ -1298,11 +1453,15 @@ function DrawerChat({ tripId, members }: { tripId: string; members: MemberWithSt
           <input
             type="text"
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
+            onChange={(e) => {
+              setNewMessage(e.target.value);
+              handleTyping();
+            }}
             onKeyPress={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 handleSend(e);
+                broadcastTyping(false);
               }
             }}
             placeholder="Type a message..."
