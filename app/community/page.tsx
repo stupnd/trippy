@@ -149,18 +149,36 @@ export default function CommunityPage() {
       setRequestError('Message is required.');
       return;
     }
+    const existingRequest = requestsByTrip[requestTrip.id];
+    if (existingRequest?.status === 'approved') {
+      setRequestError('Your request was already approved. Open the trip from My Trips.');
+      return;
+    }
     setRequestSaving(true);
     setRequestError('');
     try {
-      const { data, error: insertError } = await supabase
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      const displayName =
+        profile?.full_name ||
+        user.user_metadata?.full_name ||
+        user.email?.split('@')[0] ||
+        'Traveler';
+
+      const { data, error: upsertError } = await supabase
         .from('join_requests')
-        .insert({
-          id: uuidv4(),
+        .upsert({
+          id: existingRequest?.id || uuidv4(),
           trip_id: requestTrip.id,
           requester_id: user.id,
           message: requestForm.message.trim(),
           status: 'pending',
-        })
+          display_name: displayName,
+        }, { onConflict: 'trip_id, requester_id' })
         .select('*')
         .single();
       

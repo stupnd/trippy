@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { format, differenceInCalendarDays } from 'date-fns';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { ArrowLeft, Plane, Hotel, Target, Calendar, Utensils, Settings, Sparkles, Share2, Trash2, LogOut, Users, Circle, X, MessageCircle, Send } from 'lucide-react';
+import { ArrowLeft, Plane, Hotel, Target, Calendar, Utensils, Settings, Sparkles, Share2, Trash2, LogOut, Users, Circle, X, MessageCircle, Send, UserMinus } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth, useTripMember } from '@/lib/auth';
 import { TripRow, TripMemberRow } from '@/lib/supabase';
@@ -30,6 +30,7 @@ export default function TripDetailPage() {
   const [generating, setGenerating] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [kickingMemberId, setKickingMemberId] = useState<string | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState('');
   const [preferencesUpdatedAt, setPreferencesUpdatedAt] = useState<string | null>(null);
@@ -646,6 +647,33 @@ export default function TripDetailPage() {
       console.error('Error leaving trip:', leaveError);
       setError(leaveError.message || 'Failed to leave trip');
       setLeaving(false);
+    }
+  };
+
+  const handleKickMember = async (member: MemberWithStatus) => {
+    if (!user || !trip) return;
+    if (user.id !== trip.created_by) return;
+    if (member.user_id === trip.created_by) return;
+
+    const confirmed = window.confirm(`Remove ${member.name} from this trip?`);
+    if (!confirmed) return;
+
+    setKickingMemberId(member.id);
+    setError('');
+
+    try {
+      const { error: kickError } = await supabase
+        .from('trip_members')
+        .delete()
+        .eq('id', member.id);
+      if (kickError) throw kickError;
+
+      setMembers((prev) => prev.filter((m) => m.id !== member.id));
+    } catch (kickError: any) {
+      console.error('Error removing member:', kickError);
+      setError(kickError.message || 'Failed to remove member');
+    } finally {
+      setKickingMemberId(null);
     }
   };
 
@@ -1781,6 +1809,19 @@ export default function TripDetailPage() {
                           )}
                         </div>
                       </div>
+                      {trip?.created_by === user?.id && member.user_id !== user.id && (
+                        <button
+                          onClick={() => handleKickMember(member)}
+                          disabled={kickingMemberId === member.id}
+                          className="px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 border border-rose-200 bg-rose-50 hover:bg-rose-100 transition-colors disabled:opacity-50 dark:text-rose-300 dark:border-rose-500/30 dark:bg-rose-500/10 dark:hover:bg-rose-500/20"
+                          aria-label={`Remove ${member.name}`}
+                        >
+                          <span className="flex items-center gap-1.5">
+                            <UserMinus className="w-4 h-4" />
+                            {kickingMemberId === member.id ? 'Removing...' : 'Remove'}
+                          </span>
+                        </button>
+                      )}
                     </div>
                   );
                 })}
