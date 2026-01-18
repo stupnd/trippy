@@ -61,7 +61,7 @@ export default function LandingPage() {
 
 
   return (
-    <div ref={containerRef} className="relative min-h-screen overflow-hidden -mt-28">
+    <div ref={containerRef} className="relative min-h-screen overflow-hidden -mt-28 bg-slate-50 dark:bg-slate-900">
       {/* Hero Section */}
       <motion.div
         ref={heroRef}
@@ -69,7 +69,7 @@ export default function LandingPage() {
         className="relative h-screen flex items-center justify-center overflow-hidden pt-24"
       >
         {/* Atmospheric Background - covers everything */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900 via-slate-900 to-black z-0" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-50 via-sky-50 to-slate-100 dark:from-indigo-900 dark:via-slate-900 dark:to-black z-0" />
 
         {/* Floating Clouds */}
         {[1, 2, 3, 4, 5].map((i) => (
@@ -121,7 +121,7 @@ export default function LandingPage() {
           return (
             <motion.div
               key={`${destination.name}-${index}`}
-              className={`absolute glass-card px-4 py-2 rounded-full backdrop-blur-md border border-white/20 z-10 ${blurIntensity}`}
+              className={`absolute glass-card px-4 py-2 rounded-full backdrop-blur-md border border-slate-200 dark:border-white/20 z-10 ${blurIntensity}`}
               style={{
                 left: `${startLeft}%`,
                 opacity,
@@ -148,7 +148,7 @@ export default function LandingPage() {
                 },
               }}
             >
-              <div className="flex items-center gap-2 text-white text-sm font-medium whitespace-nowrap">
+              <div className="flex items-center gap-2 text-slate-900 dark:text-white text-sm font-medium whitespace-nowrap">
                 <span className="text-base">{destination.emoji}</span>
                 <span>{destination.name}</span>
               </div>
@@ -164,11 +164,11 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1, ease: 'easeOut' }}
-            className="text-7xl md:text-9xl font-black text-white mb-8 tracking-tighter"
+            className="text-7xl md:text-9xl font-black text-slate-900 dark:text-white mb-8 tracking-tighter"
           >
             Plan trips together,
             <br />
-            <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 dark:from-blue-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
               not alone.
             </span>
           </motion.h1>
@@ -177,7 +177,7 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1, delay: 0.2, ease: 'easeOut' }}
-            className="text-xl md:text-2xl text-slate-300 mb-12 max-w-2xl mx-auto mt-4"
+            className="text-xl md:text-2xl text-slate-700 dark:text-slate-300 mb-12 max-w-2xl mx-auto mt-4"
           >
             Collaborate, discover, and build unforgettable adventures with your group
           </motion.p>
@@ -189,7 +189,7 @@ export default function LandingPage() {
           >
             <Link
               href="/auth"
-              className="inline-block px-12 py-6 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white text-xl font-bold rounded-3xl shadow-2xl shadow-purple-600/50 hover:shadow-purple-600/70 transition-all hover:scale-105 relative overflow-hidden group"
+              className="inline-block px-12 py-6 bg-sky-200 text-slate-900 text-xl font-bold rounded-3xl shadow-2xl shadow-sky-200/60 hover:bg-sky-300 transition-all hover:scale-105 relative overflow-hidden group dark:bg-gradient-to-r dark:from-indigo-600 dark:via-purple-600 dark:to-pink-600 dark:text-white dark:shadow-purple-600/50 dark:hover:shadow-purple-600/70"
             >
               <motion.div
                 className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
@@ -220,14 +220,14 @@ export default function LandingPage() {
           <motion.div
             animate={{ y: [0, 10, 0] }}
             transition={{ duration: 2, repeat: Infinity }}
-            className="flex flex-col items-center gap-2 text-white/60"
+            className="flex flex-col items-center gap-2 text-slate-500 dark:text-white/60"
           >
             <span className="text-sm">Scroll to explore</span>
-            <div className="w-6 h-10 border-2 border-white/30 rounded-full flex justify-center">
+            <div className="w-6 h-10 border-2 border-slate-400/50 dark:border-white/30 rounded-full flex justify-center">
               <motion.div
                 animate={{ y: [0, 12, 0] }}
                 transition={{ duration: 2, repeat: Infinity }}
-                className="w-1.5 h-1.5 bg-white/60 rounded-full mt-2"
+                className="w-1.5 h-1.5 bg-slate-500/70 dark:bg-white/60 rounded-full mt-2"
               />
             </div>
           </motion.div>
@@ -241,12 +241,12 @@ export default function LandingPage() {
           style={{ opacity: mapOpacity }}
           className="absolute inset-0 z-0"
         >
-          <div className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-30 dark:opacity-30 brightness-110 saturate-110 dark:brightness-100 dark:saturate-100"
+          <div className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-50 dark:opacity-30 brightness-110 saturate-110 dark:brightness-100 dark:saturate-100"
             style={{
               backgroundImage: `url('https://upload.wikimedia.org/wikipedia/commons/8/83/Equirectangular_projection_SW.jpg')`,
             }}
           />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(15,23,42,0.3),rgba(15,23,42,0.7)_60%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(148,163,184,0.2),rgba(226,232,240,0.85)_60%)] dark:bg-[radial-gradient(circle_at_30%_20%,rgba(15,23,42,0.3),rgba(15,23,42,0.7)_60%)]" />
         </motion.div>
 
         {/* Feature Cards - Snap together from floating cards */}
@@ -261,10 +261,10 @@ export default function LandingPage() {
             transition={{ duration: 0.8 }}
             className="text-center mb-16"
           >
-            <h2 className="text-5xl md:text-6xl font-black text-white mb-4 tracking-tighter">
+            <h2 className="text-5xl md:text-6xl font-black text-slate-900 dark:text-white mb-4 tracking-tighter">
               Everything you need
               <br />
-              <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
                 in one place
               </span>
             </h2>
@@ -306,13 +306,13 @@ export default function LandingPage() {
                     damping: 15,
                   }}
                   whileHover={{ scale: 1.05, y: -10 }}
-                  className="glass-card rounded-3xl p-8 border border-white/20 backdrop-blur-xl"
+                  className="glass-card rounded-3xl p-8 border border-slate-200 dark:border-white/20 backdrop-blur-xl"
                 >
                   <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${feature.color} flex items-center justify-center mb-6`}>
                     <Icon className="w-8 h-8 text-white" />
                   </div>
-                  <h3 className="text-2xl font-bold text-white mb-3">{feature.title}</h3>
-                  <p className="text-slate-300 leading-relaxed">{feature.description}</p>
+                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">{feature.title}</h3>
+                  <p className="text-slate-700 dark:text-slate-300 leading-relaxed">{feature.description}</p>
                 </motion.div>
               );
             })}
@@ -328,11 +328,11 @@ export default function LandingPage() {
           >
             <Link
               href="/auth"
-              className="inline-block px-12 py-6 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white text-xl font-bold rounded-3xl shadow-2xl shadow-purple-600/50 hover:shadow-purple-600/70 transition-all hover:scale-105"
+              className="inline-block px-12 py-6 bg-sky-200 text-slate-900 text-xl font-bold rounded-3xl shadow-2xl shadow-sky-200/60 hover:bg-sky-300 transition-all hover:scale-105 dark:bg-gradient-to-r dark:from-indigo-600 dark:via-purple-600 dark:to-pink-600 dark:text-white dark:shadow-purple-600/50 dark:hover:shadow-purple-600/70"
             >
               Get Started Free
             </Link>
-            <p className="text-slate-400 mt-4">No credit card required</p>
+            <p className="text-slate-600 dark:text-slate-400 mt-4">No credit card required</p>
           </motion.div>
         </motion.div>
       </div>
