@@ -1548,19 +1548,14 @@ export default function TripDetailPage() {
             { title: 'Itinerary', icon: Calendar, status: getModuleStatus('itinerary'), href: `/trips/${tripId}/suggestions?tab=itinerary` },
             { title: 'Food Recommendations', icon: Utensils, status: getModuleStatus('food'), href: `/trips/${tripId}/food` },
           ].map((module, index) => (
-            <motion.div
+            <ModuleCard
               key={module.title}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: index * 0.1 }}
-            >
-              <ModuleCard
-                title={module.title}
-                icon={module.icon}
-                status={module.status}
-                href={module.href}
-              />
-            </motion.div>
+              title={module.title}
+              icon={module.icon}
+              status={module.status}
+              href={module.href}
+              index={index}
+            />
           ))}
         </div>
 
@@ -2185,11 +2180,13 @@ function ModuleCard({
   icon: Icon,
   status,
   href,
+  index = 0,
 }: {
   title: string;
   icon: React.ComponentType<{ className?: string }>;
   status: ModuleStatus;
   href: string;
+  index?: number;
 }) {
   const getStatusColor = () => {
     switch (status) {
@@ -2218,18 +2215,26 @@ function ModuleCard({
   };
 
   return (
-    <Link
-      href={href}
-      className="glass-card p-6 glass-card-hover flex flex-col"
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: index * 0.1 }}
+      whileHover={{ y: -5 }}
+      className="h-full"
     >
-      <Icon className="w-8 h-8 text-blue-400 opacity-80 mb-3" />
-      <h3 className="text-lg font-semibold mb-3 text-slate-50">{title}</h3>
-      <div className="flex items-center gap-2 mt-auto">
-        <span className={`text-lg ${getStatusColor()}`}>{getStatusIcon()}</span>
-        <span className={`text-sm font-medium ${getStatusColor()}`}>
-          {status}
-        </span>
-      </div>
-    </Link>
+      <Link
+        href={href}
+        className="bg-slate-900/60 backdrop-blur-xl border border-white/20 rounded-3xl p-6 flex flex-col hover:bg-slate-900/70 transition-all h-full"
+      >
+        <Icon className="w-8 h-8 text-blue-400 opacity-80 mb-3" />
+        <h3 className="text-lg font-semibold mb-3 text-white tracking-tight">{title}</h3>
+        <div className="flex items-center gap-2 mt-auto">
+          <span className={`text-lg ${getStatusColor()}`}>{getStatusIcon()}</span>
+          <span className={`text-sm font-medium ${getStatusColor()}`}>
+            {status}
+          </span>
+        </div>
+      </Link>
+    </motion.div>
   );
 }

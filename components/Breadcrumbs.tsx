@@ -134,6 +134,12 @@ export default function Breadcrumbs() {
             href: `/trips/${tripId}/itinerary`,
             isActive: true,
           });
+        } else if (pathname.includes('/food')) {
+          segments.push({
+            label: 'Food',
+            href: `/trips/${tripId}/food`,
+            isActive: true,
+          });
         } else if (pathname.includes('/share')) {
           segments.push({
             label: 'Share',
