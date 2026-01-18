@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
+import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
-import { TripRow } from '@/lib/supabase';
+import { TripRow, TripMemberRow } from '@/lib/supabase';
 
 type JoinRequest = {
   id: string;
@@ -17,10 +19,15 @@ type JoinRequest = {
   status: 'pending' | 'approved' | 'rejected';
 };
 
+interface TripWithMembers extends TripRow {
+  members?: TripMemberRow[];
+  memberCount?: number;
+}
+
 export default function CommunityPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const [trips, setTrips] = useState<TripRow[]>([]);
+  const [trips, setTrips] = useState<TripWithMembers[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [memberTripIds, setMemberTripIds] = useState<Set<string>>(new Set());
@@ -29,79 +36,95 @@ export default function CommunityPage() {
   const [requestTrip, setRequestTrip] = useState<TripRow | null>(null);
   const [requestSaving, setRequestSaving] = useState(false);
   const [requestError, setRequestError] = useState('');
-  const [requestForm, setRequestForm] = useState({
-    displayName: '',
-    message: '',
-  });
+  const [requestForm, setRequestForm] = useState({ displayName: '', message: '' });
 
   const statusLabel = (status?: string | null) => {
-    switch (status) {
-      case 'planning':
-        return 'Planning';
-      case 'booked':
-        return 'Booked';
-      case 'in_progress':
-        return 'In Progress';
-      case 'completed':
-        return 'Completed';
-      case 'canceled':
-        return 'Canceled';
-      default:
-        return 'Planning';
-    }
+    const labels: Record<string, string> = {
+      planning: 'Planning',
+      booked: 'Booked',
+      in_progress: 'In Progress',
+      completed: 'Completed',
+    };
+    return labels[status || 'planning'] || 'Planning';
   };
 
   useEffect(() => {
     const loadCommunityTrips = async () => {
       try {
-        const { data, error: tripsError } = await supabase
+        const { data: tripsData, error: tripsError } = await supabase
           .from('trips')
           .select('*')
           .eq('is_public', true)
           .order('created_at', { ascending: false });
 
         if (tripsError) throw tripsError;
-        setTrips(data || []);
-      } catch (err: any) {
-        console.error('Error loading community trips:', err);
+
+        const tripsWithMembers: TripWithMembers[] = await Promise.all(
+          (tripsData || []).map(async (trip) => {
+            const { data: members, error: membersError } = await supabase
+              .from('trip_members')
+              .select('id, user_id, name')
+              .eq('trip_id', trip.id)
+              .limit(5);
+
+            if (!membersError && members) {
+              const memberIds = members.filter(m => m.user_id).map(m => m.user_id!);
+              const profileMap = new Map<string, string | null>();
+              
+              if (memberIds.length > 0) {
+                const { data: profiles } = await supabase
+                  .from('profiles')
+                  .select('id, avatar_url')
+                  .in('id', memberIds);
+                profiles?.forEach(p => profileMap.set(p.id, p.avatar_url));
+              }
+
+              const { count } = await supabase
+                .from('trip_members')
+                .select('*', { count: 'exact', head: true })
+                .eq('trip_id', trip.id);
+
+              return {
+                ...trip,
+                members: members.map(m => ({
+                  ...m,
+                  avatar_url: m.user_id ? profileMap.get(m.user_id) || null : null,
+                })),
+                memberCount: count || members.length,
+              };
+            }
+            return { ...trip, members: [], memberCount: 0 };
+          })
+        );
+        setTrips(tripsWithMembers);
+      } catch (err) {
         setError('Failed to load community trips');
       } finally {
         setLoading(false);
       }
     };
-
     loadCommunityTrips();
   }, []);
 
   useEffect(() => {
     if (!user) return;
-
     const loadUserData = async () => {
       try {
-        const { data: memberships, error: membersError } = await supabase
+        const { data: memberships } = await supabase
           .from('trip_members')
           .select('trip_id')
           .eq('user_id', user.id);
-
-        if (membersError) throw membersError;
         setMemberTripIds(new Set((memberships || []).map((m) => m.trip_id)));
 
-        const { data: requests, error: requestsError } = await supabase
+        const { data: requests } = await supabase
           .from('join_requests')
           .select('*')
           .eq('requester_id', user.id);
-
-        if (requestsError) throw requestsError;
         const mapped: Record<string, JoinRequest> = {};
-        (requests || []).forEach((req) => {
-          mapped[req.trip_id] = req as JoinRequest;
-        });
+        requests?.forEach((req) => { mapped[req.trip_id] = req as JoinRequest; });
         setRequestsByTrip(mapped);
-      } catch (err: any) {
-        console.error('Error loading community user data:', err);
-      }
+      } catch (err) { console.error(err); }
     };
-
     loadUserData();
   }, [user]);
 
@@ -109,10 +132,7 @@ export default function CommunityPage() {
     setRequestTrip(trip);
     setRequestError('');
     setRequestForm({
-      displayName:
-        (user?.user_metadata?.full_name as string) ||
-        (user?.user_metadata?.name as string) ||
-        '',
+      displayName: (user?.user_metadata?.full_name || user?.user_metadata?.name || ''),
       message: '',
     });
     setRequestOpen(true);
@@ -120,22 +140,11 @@ export default function CommunityPage() {
 
   const submitJoinRequest = async () => {
     if (!user || !requestTrip) return;
-    if (!requestForm.displayName.trim()) {
-      setRequestError('Display name is required.');
+    if (!requestForm.displayName.trim() || !requestForm.message.trim()) {
+      setRequestError('All fields are required.');
       return;
     }
-    if (!requestForm.message.trim()) {
-      setRequestError('Please add a short description.');
-      return;
-    }
-    if (requestForm.message.length > 280) {
-      setRequestError('Description must be 280 characters or fewer.');
-      return;
-    }
-
     setRequestSaving(true);
-    setRequestError('');
-
     try {
       const { data, error: insertError } = await supabase
         .from('join_requests')
@@ -149,268 +158,252 @@ export default function CommunityPage() {
         })
         .select('*')
         .single();
-
       if (insertError) throw insertError;
-      if (data) {
         setRequestsByTrip((prev) => ({ ...prev, [requestTrip.id]: data as JoinRequest }));
-      }
       setRequestOpen(false);
     } catch (err: any) {
-      console.error('Error submitting join request:', err);
       setRequestError(err.message || 'Failed to submit request');
     } finally {
       setRequestSaving(false);
     }
   };
 
-  const duplicateTrip = async (tripId: string) => {
-    if (!user) return;
-    try {
-      const response = await fetch('/api/trips/duplicate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trip_id: tripId, user_id: user.id }),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to duplicate trip');
-      }
-      router.push(`/trips/${data.trip_id}`);
-    } catch (err: any) {
-      console.error('Error duplicating trip:', err);
-      setError(err.message || 'Failed to duplicate trip');
-    }
-  };
-
-  const planningTrips = useMemo(
-    () => trips.filter((trip) => (trip.status || 'planning') === 'planning'),
-    [trips]
-  );
-  const completedTrips = useMemo(
-    () => trips.filter((trip) => (trip.status || 'planning') === 'completed'),
-    [trips]
-  );
+  const planningTrips = useMemo(() => trips.filter(t => (t.status || 'planning') === 'planning'), [trips]);
+  const completedTrips = useMemo(() => trips.filter(t => t.status === 'completed'), [trips]);
 
   if (loading || authLoading) {
     return (
-      <div className="min-h-screen pb-8 bg-slate-50 dark:bg-slate-900">
-        <div className="container mx-auto px-4 md:px-8 max-w-7xl">
-          <div className="h-10 bg-slate-200 dark:bg-white/10 rounded-2xl w-48 mt-8 mb-6 shimmer-loader"></div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="glass-card p-6 h-44 shimmer-loader"></div>
-            ))}
-          </div>
+      <div className="min-h-screen pt-24 pb-8 container mx-auto px-4 md:px-8 max-w-7xl">
+        <div className="h-12 bg-white/5 rounded-2xl w-64 mb-10 shimmer-loader" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-80 bg-slate-900/40 rounded-3xl border border-white/10 shimmer-loader" />
+          ))}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen pb-10 bg-slate-50 dark:bg-slate-900">
+    <div className="min-h-screen pt-24 pb-20">
       <div className="container mx-auto px-4 md:px-8 max-w-7xl">
-        <div className="pt-8 mb-8">
-          <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-2 tracking-tight">
-            Community Trips
-          </h1>
-          <p className="text-slate-700 dark:text-slate-300">
-            Browse public trips and join groups planning their next adventure.
+        {/* Header Section */}
+        <div className="mb-16">
+          <motion.h1 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="text-6xl md:text-8xl font-black text-white mb-6 tracking-tighter leading-none"
+          >
+            COMMUNITY <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">TRIPS</span>
+          </motion.h1>
+          <p className="text-slate-400 text-xl max-w-2xl leading-relaxed">
+            Discover how others are seeing the world. Join an active group or draw inspiration for your next journey.
           </p>
         </div>
 
-        {error && (
-          <div className="bg-red-100 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 dark:bg-red-900 dark:border-red-700 dark:text-red-100">
-            {error}
+        {/* Planning Section */}
+        <section className="mb-24">
+          <div className="flex items-center gap-4 mb-10">
+            <h2 className="text-3xl font-bold text-white tracking-tight">Planning Now</h2>
+            <div className="h-px flex-1 bg-white/10" />
           </div>
-        )}
 
-        <section className="mb-10">
-          <h2 className="text-2xl font-semibold text-slate-900 dark:text-white mb-4">Planning Now</h2>
-          {planningTrips.length === 0 ? (
-            <div className="glass-card p-6 text-slate-600 dark:text-slate-300">
-              No public trips are in planning right now.
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {planningTrips.map((trip) => {
-                const isMember = memberTripIds.has(trip.id);
-                const request = requestsByTrip[trip.id];
-                const isOwner = user?.id === trip.created_by;
-
-                return (
-                  <div key={trip.id} className="glass-card p-6 rounded-2xl flex flex-col gap-4">
-                    <div>
-                      <div className="text-xs text-slate-400 mb-2">Status · {statusLabel(trip.status)}</div>
-                      <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
-                        {trip.name}
-                      </h3>
-                      <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
-                        {trip.destination_city}, {trip.destination_country}
-                      </p>
-                      {trip.start_date && trip.end_date && (
-                        <p className="text-xs text-slate-400 mt-2">
-                          {trip.start_date} → {trip.end_date}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="mt-auto">
-                      {isMember && (
-                        <Link
-                          href={`/trips/${trip.id}`}
-                          className="inline-flex items-center justify-center w-full px-4 py-2 rounded-xl bg-sky-200 text-slate-900 font-semibold hover:bg-sky-300 transition-all text-sm"
-                        >
-                          Open Trip
-                        </Link>
-                      )}
-                      {!isMember && isOwner && (
-                        <Link
-                          href={`/trips/${trip.id}`}
-                          className="inline-flex items-center justify-center w-full px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-100 transition-all text-sm dark:border-white/20 dark:text-slate-300 dark:hover:bg-white/10"
-                        >
-                          View Trip
-                        </Link>
-                      )}
-                      {!isMember && !isOwner && (
-                        <>
-                          {request?.status === 'pending' && (
-                            <div className="text-sm text-slate-400">Request pending</div>
-                          )}
-                          {request?.status === 'approved' && (
-                            <Link
-                              href={`/trips/${trip.id}`}
-                              className="inline-flex items-center justify-center w-full px-4 py-2 rounded-xl bg-sky-200 text-slate-900 font-semibold hover:bg-sky-300 transition-all text-sm"
-                            >
-                              Open Trip
-                            </Link>
-                          )}
-                          {(!request || request.status === 'rejected') && (
-                            <button
-                              type="button"
-                              onClick={() => openRequestModal(trip)}
-                              className="inline-flex items-center justify-center w-full px-4 py-2 rounded-xl bg-sky-100 text-slate-900 hover:bg-sky-200 transition-all text-sm dark:bg-white/10 dark:text-slate-200 dark:hover:bg-white/20"
-                              disabled={!user}
-                            >
-                              {user ? 'Request to Join' : 'Sign in to request'}
-                            </button>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        <section>
-          <h2 className="text-2xl font-semibold text-slate-900 dark:text-white mb-4">
-            Completed Trips
-          </h2>
-          {completedTrips.length === 0 ? (
-            <div className="glass-card p-6 text-slate-600 dark:text-slate-300">
-              No public trips are completed yet.
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {completedTrips.map((trip) => (
-                <div key={trip.id} className="glass-card p-6 rounded-2xl flex flex-col gap-4">
-                  <div>
-                    <div className="text-xs text-slate-400 mb-2">Status · {statusLabel(trip.status)}</div>
-                    <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
-                      {trip.name}
-                    </h3>
-                    <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
-                      {trip.destination_city}, {trip.destination_country}
-                    </p>
-                    {trip.start_date && trip.end_date && (
-                      <p className="text-xs text-slate-400 mt-2">
-                        {trip.start_date} → {trip.end_date}
-                      </p>
-                    )}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => duplicateTrip(trip.id)}
-                    className="inline-flex items-center justify-center w-full px-4 py-2 rounded-xl bg-sky-200 text-slate-900 font-semibold hover:bg-sky-300 transition-all text-sm"
-                    disabled={!user}
-                  >
-                    {user ? 'Duplicate Trip' : 'Sign in to duplicate'}
-                  </button>
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {planningTrips.map((trip, idx) => (
+              <TripCard 
+                key={trip.id} 
+                trip={trip} 
+                idx={idx} 
+                user={user} 
+                isMember={memberTripIds.has(trip.id)}
+                request={requestsByTrip[trip.id]}
+                onJoin={() => openRequestModal(trip)}
+              />
               ))}
             </div>
-          )}
         </section>
       </div>
 
-      {requestOpen && requestTrip && (
-        <div className="fixed inset-0 z-50 bg-slate-900/30 dark:bg-slate-950/60 flex items-center justify-center px-4">
-          <div className="glass-card w-full max-w-lg rounded-3xl p-6 border border-slate-200 dark:border-white/10">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Request to Join</h2>
-              <button
+      {/* Request Modal - Implemented with high-end glassmorphism */}
+      <AnimatePresence>
+        {requestOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-md" 
                 onClick={() => setRequestOpen(false)}
-                className="text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
-                aria-label="Close"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-              {requestTrip.name} · {requestTrip.destination_city}, {requestTrip.destination_country}
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-slate-700 dark:text-slate-300 mb-2">Display name</label>
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-lg bg-slate-900/90 backdrop-blur-2xl rounded-[2.5rem] border border-white/20 p-8 shadow-2xl"
+            >
+              <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">Join Adventure</h2>
+              <p className="text-slate-400 mb-8">Tell the group a bit about yourself and why you're excited for {requestTrip?.name}.</p>
+              
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-300 ml-1">Display Name</label>
                 <input
                   type="text"
                   value={requestForm.displayName}
-                  onChange={(e) => setRequestForm((prev) => ({ ...prev, displayName: e.target.value }))}
-                  className="w-full rounded-2xl bg-white border border-slate-200 px-4 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-300/60 dark:bg-white/5 dark:border-white/10 dark:text-white dark:focus:ring-blue-500"
-                  placeholder="Name shown to the group"
+                    onChange={(e) => setRequestForm(p => ({ ...p, displayName: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                 />
               </div>
-              <div>
-                <label className="block text-sm text-slate-700 dark:text-slate-300 mb-2">Why do you want to join?</label>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-300 ml-1">Your Message</label>
                 <textarea
+                    rows={4}
                   value={requestForm.message}
-                  onChange={(e) => setRequestForm((prev) => ({ ...prev, message: e.target.value }))}
-                  className="w-full min-h-[120px] rounded-2xl bg-white border border-slate-200 px-4 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-300/60 dark:bg-white/5 dark:border-white/10 dark:text-white dark:focus:ring-blue-500"
-                  maxLength={280}
-                />
-                <div className="text-xs text-slate-500 mt-1">
-                  {requestForm.message.length}/280
+                    onChange={(e) => setRequestForm(p => ({ ...p, message: e.target.value }))}
+                    placeholder="I've always wanted to visit..."
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all resize-none"
+                  />
                 </div>
-              </div>
-              {requestError && (
-                <div className="rounded-2xl border border-red-200 bg-red-100 px-4 py-3 text-red-700 text-sm dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-200">
-                  {requestError}
-                </div>
-              )}
-              <div className="flex gap-3 pt-2">
+                {requestError && <p className="text-rose-400 text-sm ml-1">{requestError}</p>}
                 <button
-                  type="button"
-                  onClick={() => setRequestOpen(false)}
-                  className="flex-1 rounded-2xl border border-slate-200 px-4 py-2 text-slate-800 hover:bg-slate-100 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
                   onClick={submitJoinRequest}
                   disabled={requestSaving}
-                  className="flex-1 rounded-2xl bg-sky-200 px-4 py-2 font-semibold text-slate-900 hover:bg-sky-300 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-blue-600 dark:text-white dark:hover:bg-blue-700"
+                  className="w-full py-4 bg-gradient-to-r from-indigo-600 to-violet-600 rounded-2xl font-bold text-white shadow-xl shadow-indigo-500/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
                 >
                   {requestSaving ? 'Sending...' : 'Send Request'}
                 </button>
               </div>
-            </div>
-          </div>
+            </motion.div>
         </div>
       )}
+      </AnimatePresence>
     </div>
+  );
+}
+
+// Dynamic destination image URL using Unsplash - using curated photo IDs for reliability
+const destinationImageMap: Record<string, string> = {
+  // Common destinations with known good Unsplash photo IDs
+  'tokyo,japan': 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800&h=600&fit=crop',
+  'paris,france': 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&h=600&fit=crop',
+  'lisbon,portugal': 'https://images.unsplash.com/photo-1555881403-671f0b4c6413?w=800&h=600&fit=crop',
+  'london,uk': 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=800&h=600&fit=crop',
+  'london,united kingdom': 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=800&h=600&fit=crop',
+  'bali,indonesia': 'https://images.unsplash.com/photo-1518548419970-58e3b4079ab2?w=800&h=600&fit=crop',
+  'rome,italy': 'https://images.unsplash.com/photo-1515542622106-78bda8ba0e5b?w=800&h=600&fit=crop',
+  'barcelona,spain': 'https://images.unsplash.com/photo-1539037116277-4db20889f2d4?w=800&h=600&fit=crop',
+  'sydney,australia': 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop',
+  'dubai,uae': 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800&h=600&fit=crop',
+  'singapore,singapore': 'https://images.unsplash.com/photo-1525625293386-3f8f99389edd?w=800&h=600&fit=crop',
+  'amsterdam,netherlands': 'https://images.unsplash.com/photo-1534351590666-13e3e96b5017?w=800&h=600&fit=crop',
+  'berlin,germany': 'https://images.unsplash.com/photo-1587330979470-1b499a31bb34?w=800&h=600&fit=crop',
+  'new york,usa': 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=800&h=600&fit=crop',
+  'new york city,usa': 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=800&h=600&fit=crop',
+  'san francisco,usa': 'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=800&h=600&fit=crop',
+  'los angeles,usa': 'https://images.unsplash.com/photo-1534190239940-9ba8944ea261?w=800&h=600&fit=crop',
+  'miami,usa': 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop',
+  'seoul,south korea': 'https://images.unsplash.com/photo-1517154421773-0529f29ea451?w=800&h=600&fit=crop',
+  'hong kong,china': 'https://images.unsplash.com/photo-1508009603885-50cf7c579365?w=800&h=600&fit=crop',
+  'istanbul,turkey': 'https://images.unsplash.com/photo-1524231757912-21f4fe3a7200?w=800&h=600&fit=crop',
+  'prague,czech republic': 'https://images.unsplash.com/photo-1541849546-216549ae216d?w=800&h=600&fit=crop',
+  'vienna,austria': 'https://images.unsplash.com/photo-1516550893923-42d28e5677af?w=800&h=600&fit=crop',
+  'budapest,hungary': 'https://images.unsplash.com/photo-1546422904-90eab23c3d7e?w=800&h=600&fit=crop',
+};
+
+const getDestinationImageUrl = (city: string, country: string): string => {
+  const key = `${city.toLowerCase()},${country.toLowerCase()}`;
+  // Use mapped image if available, otherwise fallback to default Paris image
+  return destinationImageMap[key] || 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=800&q=80';
+};
+
+// Generate airport code from city name (simple placeholder - first 3 letters)
+const getCityCode = (city: string): string => {
+  if (!city) return '???';
+  const cleaned = city.replace(/[^a-zA-Z]/g, '').toUpperCase();
+  return cleaned.slice(0, 3).padEnd(3, '?');
+};
+
+// Generate route display (origin → destination) using IATA codes
+const getRouteDisplay = (trip: any): string => {
+  const originCode = trip.origin_airport || 'YOW';
+  const destCode = trip.destination_iata || getCityCode(trip.destination_city);
+  return `${originCode.toUpperCase().slice(0, 3)} → ${destCode.toUpperCase().slice(0, 3)}`;
+};
+
+// Sub-component for the Trip Card to handle destination imagery and facepile
+function TripCard({ trip, idx, user, isMember, request, onJoin }: any) {
+  // Dynamic destination image using source.unsplash.com
+  const destinationImage = `https://source.unsplash.com/800x600/?${encodeURIComponent(trip.destination_city)},travel`;
+  const [imageError, setImageError] = useState(false);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: idx * 0.1 }}
+      className="group relative h-[28rem] rounded-[2.5rem] overflow-hidden border border-white/10 bg-slate-900/60 backdrop-blur-2xl hover:border-white/20 hover:scale-[1.02] transition-all"
+    >
+      {/* Background Image with Error Fallback */}
+      <div className="absolute inset-0 z-0">
+        {!imageError ? (
+          <img
+            src={destinationImage}
+            alt={`${trip.destination_city}, ${trip.destination_country}`}
+            className="w-full h-full object-cover opacity-40 group-hover:scale-110 transition-transform duration-700"
+            referrerPolicy="no-referrer"
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-slate-900 to-indigo-950" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent" />
+      </div>
+
+      {/* Card Content */}
+      <div className="relative h-full p-8 flex flex-col justify-end z-10">
+        <div className="mb-auto flex justify-between items-start">
+          <span className="px-4 py-1.5 bg-white/10 backdrop-blur-md rounded-full text-xs font-bold text-white border border-white/10 tracking-widest uppercase">
+            {trip.status || 'Planning'}
+          </span>
+          <div className="flex -space-x-3">
+            {trip.members?.map((m: any, i: number) => (
+              <div key={i} className="w-8 h-8 rounded-full border-2 border-slate-900 overflow-hidden bg-indigo-500 flex items-center justify-center text-[10px] font-bold">
+                {m.avatar_url ? <img src={m.avatar_url} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : m.name[0]}
+              </div>
+            ))}
+            {trip.memberCount > 5 && (
+              <div className="w-8 h-8 rounded-full border-2 border-slate-900 bg-slate-800 flex items-center justify-center text-[10px] font-bold text-slate-400">
+                +{trip.memberCount - 5}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <h3 className="text-3xl font-black text-white mb-2 leading-tight tracking-tighter uppercase">{trip.name}</h3>
+          {/* Route Chip with IATA Codes */}
+          <span className="inline-block text-sm font-mono font-bold text-emerald-400 mb-2 tracking-widest border border-emerald-500/30 px-2 py-0.5 rounded-lg bg-emerald-500/10">
+            {trip.origin_airport || 'YOW'} → {trip.destination_iata || 'YTZ'}
+          </span>
+          <p className="text-slate-300 font-medium mb-2 flex items-center gap-2">
+            <span className="opacity-60 text-lg">📍</span> {trip.destination_city}, {trip.destination_country}
+          </p>
+
+          <div className="flex items-center gap-3">
+            {isMember ? (
+              <Link href={`/trips/${trip.id}`} className="flex-1 py-4 bg-transparent border border-white/10 text-white rounded-2xl font-bold text-center hover:border-white/20 hover:bg-white/5 transition-all">
+                Open Trip
+              </Link>
+            ) : request?.status === 'pending' ? (
+              <div className="flex-1 py-4 bg-white/5 border border-white/10 rounded-2xl font-bold text-slate-400 text-center cursor-default">
+                Pending...
+              </div>
+            ) : (
+              <button onClick={onJoin} className="flex-1 py-4 bg-transparent border border-white/10 text-white rounded-2xl font-bold hover:border-white/20 hover:bg-white/5 transition-all">
+                Join Adventure
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </motion.div>
   );
 }
