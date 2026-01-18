@@ -9,6 +9,7 @@ import { ArrowLeft, Plane, Hotel, Target, Calendar, Utensils, Settings, Sparkles
 import { supabase } from '@/lib/supabase';
 import { useAuth, useTripMember } from '@/lib/auth';
 import { TripRow, TripMemberRow } from '@/lib/supabase';
+import MemberProfileModal from '@/components/MemberProfileModal';
 
 interface MemberWithStatus extends TripMemberRow {
   hasPreferences: boolean;
@@ -70,6 +71,11 @@ export default function TripDetailPage() {
   const [membersDrawerOpen, setMembersDrawerOpen] = useState(false);
   const [drawerTab, setDrawerTab] = useState<'members' | 'chat'>('members');
   const [unreadCount, setUnreadCount] = useState(0);
+  const [selectedMemberProfile, setSelectedMemberProfile] = useState<{
+    userId: string | null;
+    name: string;
+    avatarUrl?: string | null;
+  } | null>(null);
   const shouldReduceMotion = useReducedMotion();
   const disableMotion = shouldReduceMotion;
 
@@ -1389,6 +1395,7 @@ export default function TripDetailPage() {
                 ];
                 const colorClass = colors[index % colors.length];
                 
+                const userId = (member as any).user_id || member.id;
                 return (
                   <div key={member.id} className="relative inline-flex items-center">
                     {/* Avatar Circle */}
@@ -1396,7 +1403,12 @@ export default function TripDetailPage() {
                       initial={{ opacity: 0, scale: 0 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.3, delay: index * 0.1 }}
-                      className={`relative w-12 h-12 ${colorClass} rounded-full flex items-center justify-center text-white font-bold text-sm border-2 border-white/20 overflow-hidden ${
+                      onClick={() => setSelectedMemberProfile({
+                        userId,
+                        name: member.name,
+                        avatarUrl: member.avatar_url,
+                      })}
+                      className={`relative w-12 h-12 ${colorClass} rounded-full flex items-center justify-center text-white font-bold text-sm border-2 border-white/20 overflow-hidden cursor-pointer hover:scale-110 hover:ring-2 hover:ring-indigo-500/50 transition-transform ${
                         !member.hasPreferences ? 'animate-pulse' : ''
                       }`}
                     >
@@ -1744,6 +1756,7 @@ export default function TripDetailPage() {
                   ];
                   const colorClass = colors[index % colors.length];
 
+                  const userId = (member as any).user_id || member.id;
                   return (
                     <div
                       key={member.id}
@@ -1751,9 +1764,15 @@ export default function TripDetailPage() {
                     >
                       {/* Avatar */}
                       <div className="relative">
-                        <div className={`w-14 h-14 ${colorClass} rounded-full flex items-center justify-center text-white font-bold text-base border-2 border-slate-200 dark:border-white/20 overflow-hidden ${
-                          !member.hasPreferences ? 'animate-pulse' : ''
-                        }`}>
+                        <div 
+                          onClick={() => setSelectedMemberProfile({
+                            userId,
+                            name: member.name,
+                            avatarUrl: member.avatar_url,
+                          })}
+                          className={`w-14 h-14 ${colorClass} rounded-full flex items-center justify-center text-white font-bold text-base border-2 border-slate-200 dark:border-white/20 overflow-hidden cursor-pointer hover:scale-110 hover:ring-2 hover:ring-indigo-500/50 transition-transform ${
+                            !member.hasPreferences ? 'animate-pulse' : ''
+                          }`}>
                           {member.avatar_url ? (
                             <img
                               src={member.avatar_url}
@@ -1857,6 +1876,15 @@ export default function TripDetailPage() {
             </motion.div>
           </>
         )}
+
+        {/* Member Profile Modal */}
+        <MemberProfileModal
+          isOpen={selectedMemberProfile !== null}
+          onClose={() => setSelectedMemberProfile(null)}
+          userId={selectedMemberProfile?.userId || null}
+          memberName={selectedMemberProfile?.name || ''}
+          memberAvatarUrl={selectedMemberProfile?.avatarUrl}
+        />
       </AnimatePresence>
     </div>
   );

@@ -499,7 +499,7 @@ export default function SuggestionsPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen pb-8 bg-slate-50 dark:bg-slate-900">
+      <div className="min-h-screen pb-8">
         <div className="container mx-auto px-4 max-w-7xl">
           <div className="h-12 bg-slate-200 dark:bg-white/5 rounded-3xl w-64 mb-8 shimmer-loader"></div>
           <div className="grid grid-cols-3 gap-4 mb-8">
@@ -518,7 +518,7 @@ export default function SuggestionsPage() {
   // Empty state - no suggestions yet
   if (!suggestions && !generating) {
     return (
-      <div className="min-h-screen pb-8 bg-slate-50 dark:bg-slate-900">
+      <div className="min-h-screen pb-8">
         <div className="container mx-auto px-4 max-w-7xl">
           <div className="glass-card p-16 text-center">
             {mounted && <Sparkles className="w-16 h-16 text-purple-500 dark:text-purple-400 mx-auto mb-6 opacity-80" />}
@@ -587,7 +587,7 @@ export default function SuggestionsPage() {
   const fastestFlight = flights.length > 0 ? flights.reduce(fastestFlightReducer) : null;
 
   return (
-    <div className="min-h-screen pb-8 bg-slate-50 dark:bg-slate-900">
+    <div className="min-h-screen pb-8">
       <div className="container mx-auto px-4 md:px-8 max-w-7xl">
         <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-10 tracking-tight">Trip Suggestions</h1>
 

@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { TripRow } from '@/lib/supabase';
 import LandingPage from '@/components/LandingPage';
+import MemberProfileModal from '@/components/MemberProfileModal';
 
 interface UserTrip extends TripRow {
   joined_at: string;
@@ -74,7 +75,18 @@ const getCityCode = (city: string): string => {
 };
 
 // TripCard component with image error handling
-function TripCard({ trip, index, imageUrl }: { trip: UserTrip; index: number; imageUrl?: string }) {
+function TripCard({
+  trip,
+  index,
+  imageUrl,
+  onMemberClick,
+}: {
+  trip: UserTrip;
+  index: number;
+  imageUrl?: string;
+  onMemberClick?: (userId: string | null, name: string, avatarUrl?: string | null) => void;
+}) { /* ... */ }
+
   const router = useRouter();
   const destinationImage = imageUrl || '';
   const memberAvatars = (trip.members || []).slice(0, 5);
@@ -174,10 +186,15 @@ function TripCard({ trip, index, imageUrl }: { trip: UserTrip; index: number; im
               ];
               const colorClass = colors[idx % colors.length];
 
+              const userId = (member as any).user_id || member.id;
               return (
                 <div
                   key={member.id}
-                  className="relative w-10 h-10 rounded-full border-2 border-white overflow-hidden dark:border-slate-950"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onMemberClick(userId, member.name, member.avatar_url || undefined);
+                  }}
+                  className="relative w-10 h-10 rounded-full border-2 border-white overflow-hidden dark:border-slate-950 cursor-pointer hover:scale-110 hover:ring-2 hover:ring-indigo-500/50 transition-transform"
                   style={{ zIndex: 10 - idx }}
                 >
                   {member.avatar_url ? (
@@ -216,8 +233,16 @@ export default function Home() {
   const [error, setError] = useState('');
   const [unreadByTrip, setUnreadByTrip] = useState<Record<string, number>>({});
   const [pendingRequests, setPendingRequests] = useState<JoinRequestView[]>([]);
-  const [tripImages, setTripImages] = useState<Record<string, string>>({});
-  const tripImageCacheTtlMs = 1000 * 60 * 60 * 24 * 7;
+const [tripImages, setTripImages] = useState<Record<string, string>>({});
+const tripImageCacheTtlMs = 1000 * 60 * 60 * 24 * 7;
+
+const [userName, setUserName] = useState<string>('');
+const [selectedMemberProfile, setSelectedMemberProfile] = useState<{
+  userId: string | null;
+  name: string;
+  avatarUrl?: string | null;
+} | null>(null);
+
 
   const fetchPendingRequests = useCallback(async () => {
     if (!user) return;
@@ -300,6 +325,9 @@ export default function Home() {
         .select('full_name')
         .eq('id', user!.id)
         .maybeSingle();
+      
+      // Store user's name
+      setUserName(userProfile?.full_name || '');
 
       // Fetch trip details for each membership
       const tripIds = memberships.map((m) => m.trip_id);
@@ -511,13 +539,13 @@ export default function Home() {
     <div className="min-h-screen pb-8">
       <div className="container mx-auto px-4 md:px-8 max-w-7xl">
         {/* Header */}
-        <div className="flex justify-between items-center mb-10">
-          <div>
-            <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-2 tracking-tight">My Trips</h1>
-            <p className="text-slate-700 dark:text-slate-300">
-              Welcome back! Manage and view all your trips
-            </p>
-          </div>
+        <div className="mb-10">
+          <h1 className="text-6xl md:text-7xl font-black text-slate-900 dark:text-white tracking-tighter mb-4 leading-none">
+            {userName ? `${userName}'s Trips` : "My Trips"}
+          </h1>
+          <p className="text-slate-700 dark:text-slate-300 text-lg">Manage and view all your trips</p>
+        </div>
+        <div className="flex justify-end items-center mb-10 -mt-6">
           <div className="flex gap-3">
             <Link
               href="/trips/join"
@@ -656,12 +684,30 @@ export default function Home() {
               Upcoming Trips
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {trips.map((trip, index) => (
-                <TripCard key={trip.id} trip={trip} index={index} imageUrl={tripImages[trip.id]} />
-              ))}
+{trips.map((trip, index) => (
+  <TripCard
+    key={trip.id}
+    trip={trip}
+    index={index}
+    imageUrl={tripImages[trip.id]}
+    onMemberClick={(userId, name, avatarUrl) =>
+      setSelectedMemberProfile({ userId, name, avatarUrl })
+    }
+  />
+))}
+
             </div>
           </div>
         )}
+
+        {/* Member Profile Modal */}
+        <MemberProfileModal
+          isOpen={selectedMemberProfile !== null}
+          onClose={() => setSelectedMemberProfile(null)}
+          userId={selectedMemberProfile?.userId || null}
+          memberName={selectedMemberProfile?.name || ''}
+          memberAvatarUrl={selectedMemberProfile?.avatarUrl}
+        />
       </div>
     </div>
   );
