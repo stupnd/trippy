@@ -257,8 +257,8 @@ export default function TripDetailPage() {
     return (hash >>> 0).toString(16);
   };
 
-  const getApprovedItemsFromCache = () => {
-    if (typeof window === 'undefined' || members.length === 0) {
+  const getApprovedItemsFromCache = async () => {
+    if (members.length === 0) {
       return {
         flights: [],
         accommodations: [],
@@ -267,52 +267,32 @@ export default function TripDetailPage() {
       };
     }
 
-    const suggestionsRaw = localStorage.getItem(`suggestions_${tripId}`);
-    const votesRaw = localStorage.getItem(`votes_${tripId}`);
-    if (!suggestionsRaw) {
-      return {
-        flights: [],
-        accommodations: [],
-        activities: [],
-        counts: { flights: 0, accommodations: 0, activities: 0 },
-      };
-    }
+    const { data: suggestionsRow } = await supabase
+      .from('trip_suggestions')
+      .select('flights, accommodations, activities')
+      .eq('trip_id', tripId)
+      .maybeSingle();
 
-    let suggestions;
-    try {
-      suggestions = JSON.parse(suggestionsRaw);
-    } catch {
-      return {
-        flights: [],
-        accommodations: [],
-        activities: [],
-        counts: { flights: 0, accommodations: 0, activities: 0 },
-      };
-    }
+    const { data: votesData } = await supabase
+      .from('suggestion_votes')
+      .select('option_type, option_id, approved')
+      .eq('trip_id', tripId);
 
-    let votes: Record<string, Record<string, boolean>> = {};
-    if (votesRaw) {
-      try {
-        votes = JSON.parse(votesRaw);
-      } catch {
-        votes = {};
-      }
-    }
+    const votesByKey: Record<string, number> = {};
+    (votesData || []).forEach((vote) => {
+      if (!vote.approved) return;
+      const key = `${vote.option_type}_${vote.option_id}`;
+      votesByKey[key] = (votesByKey[key] || 0) + 1;
+    });
 
-    const membersCount = members.length;
-    const voteCountFor = (key: string) => {
-      const optionVotes = votes[key] || {};
-      return Object.values(optionVotes).filter(Boolean).length;
-    };
-
-    const flights = suggestions?.suggestions?.flights || [];
-    const accommodations = suggestions?.suggestions?.accommodations || [];
-    const activities = suggestions?.suggestions?.activities || [];
+    const flights = suggestionsRow?.flights || [];
+    const accommodations = suggestionsRow?.accommodations || [];
+    const activities = suggestionsRow?.activities || [];
 
     return {
-      flights: flights.filter((item: any) => voteCountFor(`flight_${item.id}`) === membersCount),
-      accommodations: accommodations.filter((item: any) => voteCountFor(`accommodation_${item.id}`) === membersCount),
-      activities: activities.filter((item: any) => voteCountFor(`activity_${item.id}`) === membersCount),
+      flights: flights.filter((item: any) => votesByKey[`flight_${item.id}`] === members.length),
+      accommodations: accommodations.filter((item: any) => votesByKey[`accommodation_${item.id}`] === members.length),
+      activities: activities.filter((item: any) => votesByKey[`activity_${item.id}`] === members.length),
       counts: {
         flights: flights.length,
         accommodations: accommodations.length,
@@ -324,7 +304,7 @@ export default function TripDetailPage() {
   const maybeUpdateSummary = async (force = false) => {
     if (!trip || members.length === 0) return;
 
-    const approved = getApprovedItemsFromCache();
+    const approved = await getApprovedItemsFromCache();
     const summaryInput = JSON.stringify({
       tripId,
       trip: {
@@ -639,8 +619,7 @@ export default function TripDetailPage() {
       if (tripError) throw tripError;
 
       if (typeof window !== 'undefined') {
-        localStorage.removeItem(`suggestions_${tripId}`);
-        localStorage.removeItem(`votes_${tripId}`);
+        localStorage.removeItem(`itinerary_${tripId}`);
       }
 
       router.push('/');
@@ -668,8 +647,7 @@ export default function TripDetailPage() {
       if (leaveError) throw leaveError;
 
       if (typeof window !== 'undefined') {
-        localStorage.removeItem(`suggestions_${tripId}`);
-        localStorage.removeItem(`votes_${tripId}`);
+        localStorage.removeItem(`itinerary_${tripId}`);
       }
 
       router.push('/');

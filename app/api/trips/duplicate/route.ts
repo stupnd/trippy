@@ -57,6 +57,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const { error: memberError } = await supabase
+      .from('trip_members')
+      .insert({
+        trip_id: newTripId,
+        user_id: user_id,
+        name: 'Trip Owner',
+      });
+
+    if (memberError) {
+      return NextResponse.json(
+        { error: 'Failed to add creator to duplicated trip', details: memberError.message },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({ trip_id: newTripId });
   } catch (error: any) {
     console.error('Error duplicating trip:', error);

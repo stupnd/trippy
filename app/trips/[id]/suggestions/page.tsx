@@ -56,6 +56,16 @@ interface SuggestionsResponse {
 }
 
 type TabType = 'flights' | 'stays' | 'activities' | 'itinerary';
+type VoteRow = {
+  id: string;
+  trip_id: string;
+  member_id: string;
+  option_type: 'flight' | 'accommodation' | 'activity';
+  option_id: string;
+  approved: boolean;
+  reason?: string | null;
+};
+type VotesByOption = Record<string, VoteRow[]>;
 
 export default function SuggestionsPage() {
   const params = useParams();
@@ -68,11 +78,13 @@ export default function SuggestionsPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
-  const [votes, setVotes] = useState<Record<string, Record<string, boolean>>>({}); // optionId -> userId -> approved
+  const [votes, setVotes] = useState<VotesByOption>({});
   const [membersCount, setMembersCount] = useState(0);
   const [votingPulse, setVotingPulse] = useState<string | null>(null);
   const [approvedItems, setApprovedItems] = useState<Set<string>>(new Set());
   const [hoveredFlightId, setHoveredFlightId] = useState<string | null>(null);
+  const [voteReasonDrafts, setVoteReasonDrafts] = useState<Record<string, string>>({});
+  const [showReasonFor, setShowReasonFor] = useState<Record<string, boolean>>({});
   const summaryUpdateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -114,15 +126,28 @@ export default function SuggestionsPage() {
     setLoading(true);
     setError('');
     try {
-      // Check if we have cached suggestions in localStorage or fetch from API
-      const cached = localStorage.getItem(`suggestions_${tripId}`);
-      if (cached) {
-        setSuggestions(JSON.parse(cached));
-        setLoading(false);
-        return;
+      const { data, error: suggestionsError } = await supabase
+        .from('trip_suggestions')
+        .select('flights, accommodations, activities, updated_at')
+        .eq('trip_id', tripId)
+        .maybeSingle();
+
+      if (suggestionsError) throw suggestionsError;
+
+      if (data) {
+        setSuggestions({
+          success: true,
+          trip_id: tripId,
+          model_used: 'gemini-2.0-flash',
+          suggestions: {
+            flights: data.flights || [],
+            accommodations: data.accommodations || [],
+            activities: data.activities || [],
+          },
+        });
+      } else {
+        setSuggestions(null);
       }
-      // If no cache, don't auto-fetch - show empty state
-      setSuggestions(null);
     } catch (err: any) {
       console.error('Error fetching suggestions:', err);
       setError(err.message);
@@ -132,14 +157,21 @@ export default function SuggestionsPage() {
   };
 
   const fetchVotes = async () => {
-    if (!user) return;
     try {
-      // For MVP, we'll use localStorage to track votes
-      // In production, replace with Supabase votes table
-      const cachedVotes = localStorage.getItem(`votes_${tripId}`);
-      if (cachedVotes) {
-        setVotes(JSON.parse(cachedVotes));
-      }
+      const { data, error: votesError } = await supabase
+        .from('suggestion_votes')
+        .select('*')
+        .eq('trip_id', tripId);
+
+      if (votesError) throw votesError;
+
+      const byOption: VotesByOption = {};
+      (data || []).forEach((vote) => {
+        const key = `${vote.option_type}_${vote.option_id}`;
+        if (!byOption[key]) byOption[key] = [];
+        byOption[key].push(vote as VoteRow);
+      });
+      setVotes(byOption);
     } catch (err) {
       console.error('Error fetching votes:', err);
     }
@@ -149,10 +181,11 @@ export default function SuggestionsPage() {
     setGenerating(true);
     setError('');
     try {
+      const rejectionContext = buildRejectionContext();
       const response = await fetch('/api/generate-trip-suggestions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trip_id: tripId }),
+        body: JSON.stringify({ trip_id: tripId, rejection_context: rejectionContext }),
       });
 
       const data = await response.json();
@@ -162,8 +195,7 @@ export default function SuggestionsPage() {
       }
 
       setSuggestions(data);
-      // Cache suggestions
-      localStorage.setItem(`suggestions_${tripId}`, JSON.stringify(data));
+      await fetchVotes();
       scheduleSummaryUpdate(votes);
     } catch (err: any) {
       console.error('Error generating suggestions:', err);
@@ -173,77 +205,88 @@ export default function SuggestionsPage() {
     }
   };
 
-  const handleVote = async (optionType: 'flight' | 'accommodation' | 'activity', optionId: string, approved: boolean) => {
+  const handleVote = async (
+    optionType: 'flight' | 'accommodation' | 'activity',
+    optionId: string,
+    approved: boolean
+  ) => {
     if (!user) return;
 
     const voteKey = `${optionType}_${optionId}`;
-    const newVotes = {
-      ...votes,
-      [voteKey]: {
-        ...votes[voteKey],
-        [user.id]: approved,
-      },
-    };
+    const reason = approved ? null : (voteReasonDrafts[voteKey] || '').trim() || null;
 
-    setVotes(newVotes);
-    // Save to localStorage (MVP) - in production, save to Supabase votes table
-    localStorage.setItem(`votes_${tripId}`, JSON.stringify(newVotes));
-    scheduleSummaryUpdate(newVotes);
+    try {
+      const { data, error: voteError } = await supabase
+        .from('suggestion_votes')
+        .upsert(
+          {
+            trip_id: tripId,
+            member_id: user.id,
+            option_type: optionType,
+            option_id: optionId,
+            approved,
+            reason,
+          },
+          { onConflict: 'trip_id, member_id, option_type, option_id' }
+        )
+        .select('*')
+        .single();
+
+      if (voteError) throw voteError;
+
+      const existing = votes[voteKey] || [];
+      const updated = existing.filter((v) => v.member_id !== user.id);
+      if (data) updated.push(data as VoteRow);
+      const nextVotes = { ...votes, [voteKey]: updated };
+      setVotes(nextVotes);
+      if (!approved) {
+        setShowReasonFor((prev) => ({ ...prev, [voteKey]: false }));
+      }
+      scheduleSummaryUpdate(nextVotes);
+
+      const newVoteCount = updated.filter((v) => v.approved).length;
+      if (newVoteCount === membersCount && membersCount > 0) {
+        if (!approvedItems.has(voteKey)) {
+          setApprovedItems(new Set([...approvedItems, voteKey]));
+          const cardElement = document.querySelector(
+            `[data-flight-id="${optionId}"], [data-accommodation-id="${optionId}"], [data-activity-id="${optionId}"]`
+          );
+
+          if (cardElement) {
+            const rect = cardElement.getBoundingClientRect();
+            const x = (rect.left + rect.width / 2) / window.innerWidth;
+            const y = (rect.top + rect.height / 2) / window.innerHeight;
+            confetti({
+              particleCount: 80,
+              spread: 40,
+              origin: { x, y },
+              colors: ['#fbbf24', '#fcd34d', '#fde047'],
+              gravity: 0.8,
+              ticks: 200,
+            });
+          } else {
+            confetti({
+              particleCount: 80,
+              spread: 40,
+              origin: { y: 0.5 },
+              colors: ['#fbbf24', '#fcd34d', '#fde047'],
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error saving vote:', err);
+    }
 
     // Voting pulse animation
     setVotingPulse(voteKey);
     setTimeout(() => setVotingPulse(null), 600);
-
-    // Check if approved by all members
-    const newVoteCount = Object.values(newVotes[voteKey] || {}).filter(Boolean).length;
-    if (newVoteCount === membersCount && membersCount > 0) {
-      // Approval celebration with confined confetti to card boundaries
-      const itemKey = `${optionType}_${optionId}`;
-      if (!approvedItems.has(itemKey)) {
-        setApprovedItems(new Set([...approvedItems, itemKey]));
-        
-        // Find the card element to confine confetti
-        const cardElement = document.querySelector(`[data-flight-id="${optionId}"], [data-accommodation-id="${optionId}"], [data-activity-id="${optionId}"]`);
-        
-        if (cardElement) {
-          const rect = cardElement.getBoundingClientRect();
-          const x = (rect.left + rect.width / 2) / window.innerWidth;
-          const y = (rect.top + rect.height / 2) / window.innerHeight;
-          
-          confetti({
-            particleCount: 80,
-            spread: 40, // Reduced spread for confinement
-            origin: { x, y },
-            colors: ['#fbbf24', '#fcd34d', '#fde047'], // Gold colors
-            gravity: 0.8,
-            ticks: 200,
-          });
-        } else {
-          // Fallback to center
-          confetti({
-            particleCount: 80,
-            spread: 40,
-            origin: { y: 0.5 },
-            colors: ['#fbbf24', '#fcd34d', '#fde047'],
-          });
-        }
-      }
-    }
-
-    // TODO: In production, save to Supabase:
-    // await supabase.from('votes').upsert({
-    //   trip_id: tripId,
-    //   member_id: user.id,
-    //   option_type: optionType,
-    //   option_id: optionId,
-    //   approved,
-    // });
   };
 
   const getVoteCount = (optionType: 'flight' | 'accommodation' | 'activity', optionId: string): number => {
     const voteKey = `${optionType}_${optionId}`;
-    const optionVotes = votes[voteKey] || {};
-    return Object.values(optionVotes).filter(Boolean).length;
+    const optionVotes = votes[voteKey] || [];
+    return optionVotes.filter((vote) => vote.approved).length;
   };
 
   const isApprovedByAll = (optionType: 'flight' | 'accommodation' | 'activity', optionId: string): boolean => {
@@ -252,16 +295,16 @@ export default function SuggestionsPage() {
   };
 
   const getVoteCountFrom = (
-    allVotes: Record<string, Record<string, boolean>>,
+    allVotes: VotesByOption,
     optionType: 'flight' | 'accommodation' | 'activity',
     optionId: string
   ) => {
     const voteKey = `${optionType}_${optionId}`;
-    const optionVotes = allVotes[voteKey] || {};
-    return Object.values(optionVotes).filter(Boolean).length;
+    const optionVotes = allVotes[voteKey] || [];
+    return optionVotes.filter((vote) => vote.approved).length;
   };
 
-  const scheduleSummaryUpdate = (allVotes: Record<string, Record<string, boolean>>) => {
+  const scheduleSummaryUpdate = (allVotes: VotesByOption) => {
     if (!suggestions || membersCount === 0) return;
 
     if (summaryUpdateTimer.current) {
@@ -303,10 +346,24 @@ export default function SuggestionsPage() {
     }, 800);
   };
 
-  const getUserVote = (optionType: 'flight' | 'accommodation' | 'activity', optionId: string): boolean | null => {
+  const getAllVotes = (optionKey: string) => votes[optionKey] || [];
+
+  const getUserVote = (optionType: 'flight' | 'accommodation' | 'activity', optionId: string): VoteRow | null => {
     if (!user) return null;
     const voteKey = `${optionType}_${optionId}`;
-    return votes[voteKey]?.[user.id] ?? null;
+    return (votes[voteKey] || []).find((vote) => vote.member_id === user.id) || null;
+  };
+
+  const buildRejectionContext = () => {
+    const reasons: string[] = [];
+    Object.entries(votes).forEach(([key, entries]) => {
+      entries
+        .filter((vote) => !vote.approved && vote.reason)
+        .forEach((vote) => {
+          reasons.push(`${key}: ${vote.reason}`);
+        });
+    });
+    return reasons.length > 0 ? reasons.join('\n') : null;
   };
 
   const getAirlineDomain = (airline: string): string => {
@@ -445,6 +502,16 @@ export default function SuggestionsPage() {
           ))}
         </div>
 
+        <div className="flex justify-end mb-6">
+          <button
+            onClick={handleGenerate}
+            disabled={generating}
+            className="px-6 py-3 rounded-xl font-semibold text-sm bg-gradient-to-r from-indigo-600 to-violet-700 text-white hover:from-indigo-700 hover:to-violet-800 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {generating ? 'Updating...' : 'Update Suggestions'}
+          </button>
+        </div>
+
         {error && (
           <div className="glass-card border-red-500/50 bg-red-500/10 text-red-200 px-4 py-3 rounded-3xl mb-6">
             {error}
@@ -469,9 +536,9 @@ export default function SuggestionsPage() {
               const isFastest = fastestFlight?.id === flight.id;
               const voteCount = getVoteCount('flight', flight.id);
               const userVote = getUserVote('flight', flight.id);
+              const voteKey = `flight_${flight.id}`;
               const airlineDomain = getAirlineDomain(flight.airline);
               const isApproved = isApprovedByAll('flight', flight.id);
-              const voteKey = `flight_${flight.id}`;
               const hasPulse = votingPulse === voteKey;
 
               return (
@@ -557,20 +624,25 @@ export default function SuggestionsPage() {
                       <MagneticButton
                         onClick={() => handleVote('flight', flight.id, true)}
                         className={`px-6 py-3 rounded-2xl font-semibold transition-all flex items-center gap-2 ${
-                          userVote === true
+                          userVote?.approved === true
                             ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30'
                             : 'bg-white/5 text-slate-300 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-teal-600 hover:text-white hover:shadow-lg hover:shadow-emerald-500/30 border border-white/10'
                         }`}
                       >
-                        <Check className={`w-5 h-5 ${userVote === true ? 'text-white' : 'text-emerald-400'}`} strokeWidth={2.5} />
+                        <Check className={`w-5 h-5 ${userVote?.approved === true ? 'text-white' : 'text-emerald-400'}`} strokeWidth={2.5} />
                         Approve
                       </MagneticButton>
 
                       {/* Reject Button - Ghost with border */}
                       <button
-                        onClick={() => handleVote('flight', flight.id, false)}
+                        onClick={() =>
+                          setShowReasonFor((prev) => ({
+                            ...prev,
+                            [voteKey]: true,
+                          }))
+                        }
                         className={`px-6 py-3 rounded-2xl font-semibold transition-all border ${
-                          userVote === false
+                          userVote?.approved === false
                             ? 'bg-red-500/20 text-red-300 border-red-500/50'
                             : 'bg-transparent text-red-400 border-red-500/50 hover:bg-red-500/20 hover:text-red-300'
                         }`}
@@ -589,6 +661,57 @@ export default function SuggestionsPage() {
                       </MagneticButton>
                     </div>
                   </div>
+                  {showReasonFor[voteKey] && (
+                    <div className="mt-4 space-y-2">
+                      <textarea
+                        value={voteReasonDrafts[voteKey] || ''}
+                        onChange={(e) =>
+                          setVoteReasonDrafts((prev) => ({
+                            ...prev,
+                            [voteKey]: e.target.value,
+                          }))
+                        }
+                        className="w-full rounded-xl bg-slate-900/60 border border-white/10 text-slate-100 text-sm px-3 py-2"
+                        placeholder="Why does this not work for you?"
+                        maxLength={240}
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleVote('flight', flight.id, false)}
+                          className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold"
+                        >
+                          Submit Rejection
+                        </button>
+                        <button
+                          onClick={() =>
+                            setShowReasonFor((prev) => ({
+                              ...prev,
+                              [voteKey]: false,
+                            }))
+                          }
+                          className="px-3 py-1.5 rounded-lg bg-white/10 text-slate-200 text-xs font-semibold"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {userVote?.approved === false && userVote.reason && (
+                    <div className="mt-4 text-xs text-red-200 bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-2">
+                      Rejection reason: {userVote.reason}
+                    </div>
+                  )}
+                  {getAllVotes(voteKey)
+                    .filter((vote) => !vote.approved && vote.reason)
+                    .map((vote) => (
+                      <div
+                        key={vote.id}
+                        className="mt-2 text-xs text-slate-300 bg-white/5 border border-white/10 rounded-xl px-3 py-2"
+                      >
+                        Rejection: {vote.reason}
+                      </div>
+                    ))}
                 </motion.div>
               );
             })}
@@ -602,9 +725,9 @@ export default function SuggestionsPage() {
             {accommodations.map((accommodation) => {
               const voteCount = getVoteCount('accommodation', accommodation.id);
               const userVote = getUserVote('accommodation', accommodation.id);
+              const voteKey = `accommodation_${accommodation.id}`;
               const stars = Math.round(accommodation.rating);
               const isApproved = isApprovedByAll('accommodation', accommodation.id);
-              const voteKey = `accommodation_${accommodation.id}`;
               const hasPulse = votingPulse === voteKey;
 
               return (
@@ -653,7 +776,7 @@ export default function SuggestionsPage() {
                     <button
                       onClick={() => handleVote('accommodation', accommodation.id, true)}
                       className={`flex-1 px-4 py-2 rounded-xl font-semibold transition-all glass-card-hover ${
-                        userVote === true
+                        userVote?.approved === true
                           ? 'bg-green-500/30 text-green-300 border border-green-500/50'
                           : 'bg-white/5 text-slate-200 hover:bg-green-500/20 hover:text-green-300 border border-white/10'
                       }`}
@@ -661,9 +784,14 @@ export default function SuggestionsPage() {
                       ✓ Approve
                     </button>
                     <button
-                      onClick={() => handleVote('accommodation', accommodation.id, false)}
+                      onClick={() =>
+                        setShowReasonFor((prev) => ({
+                          ...prev,
+                          [voteKey]: true,
+                        }))
+                      }
                       className={`flex-1 px-4 py-2 rounded-xl font-semibold transition-all glass-card-hover ${
-                        userVote === false
+                        userVote?.approved === false
                           ? 'bg-red-500/30 text-red-300 border border-red-500/50'
                           : 'bg-white/5 text-slate-200 hover:bg-red-500/20 hover:text-red-300 border border-white/10'
                       }`}
@@ -679,6 +807,58 @@ export default function SuggestionsPage() {
                       Book
                     </a>
                   </div>
+
+                  {showReasonFor[voteKey] && (
+                    <div className="mt-4 space-y-2">
+                      <textarea
+                        value={voteReasonDrafts[voteKey] || ''}
+                        onChange={(e) =>
+                          setVoteReasonDrafts((prev) => ({
+                            ...prev,
+                            [voteKey]: e.target.value,
+                          }))
+                        }
+                        className="w-full rounded-xl bg-slate-900/60 border border-white/10 text-slate-100 text-sm px-3 py-2"
+                        placeholder="Why does this not work for you?"
+                        maxLength={240}
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleVote('accommodation', accommodation.id, false)}
+                          className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold"
+                        >
+                          Submit Rejection
+                        </button>
+                        <button
+                          onClick={() =>
+                            setShowReasonFor((prev) => ({
+                              ...prev,
+                              [voteKey]: false,
+                            }))
+                          }
+                          className="px-3 py-1.5 rounded-lg bg-white/10 text-slate-200 text-xs font-semibold"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {userVote?.approved === false && userVote.reason && (
+                    <div className="mt-4 text-xs text-red-200 bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-2">
+                      Rejection reason: {userVote.reason}
+                    </div>
+                  )}
+                  {getAllVotes(voteKey)
+                    .filter((vote) => !vote.approved && vote.reason)
+                    .map((vote) => (
+                      <div
+                        key={vote.id}
+                        className="mt-2 text-xs text-slate-300 bg-white/5 border border-white/10 rounded-xl px-3 py-2"
+                      >
+                        Rejection: {vote.reason}
+                      </div>
+                    ))}
                 </div>
               );
             })}
@@ -691,8 +871,8 @@ export default function SuggestionsPage() {
             {activities.map((activity) => {
               const voteCount = getVoteCount('activity', activity.id);
               const userVote = getUserVote('activity', activity.id);
-              const isApproved = isApprovedByAll('activity', activity.id);
               const voteKey = `activity_${activity.id}`;
+              const isApproved = isApprovedByAll('activity', activity.id);
               const hasPulse = votingPulse === voteKey;
 
               return (
@@ -725,7 +905,7 @@ export default function SuggestionsPage() {
                       <button
                         onClick={() => handleVote('activity', activity.id, true)}
                         className={`px-4 py-2 rounded-xl font-semibold transition-all glass-card-hover ${
-                          userVote === true
+                          userVote?.approved === true
                             ? 'bg-green-500/30 text-green-300 border border-green-500/50'
                             : 'bg-white/5 text-slate-200 hover:bg-green-500/20 hover:text-green-300 border border-white/10'
                         }`}
@@ -733,9 +913,14 @@ export default function SuggestionsPage() {
                         ✓ Approve
                       </button>
                       <button
-                        onClick={() => handleVote('activity', activity.id, false)}
+                      onClick={() =>
+                        setShowReasonFor((prev) => ({
+                          ...prev,
+                          [voteKey]: true,
+                        }))
+                      }
                         className={`px-4 py-2 rounded-xl font-semibold transition-all glass-card-hover ${
-                          userVote === false
+                          userVote?.approved === false
                             ? 'bg-red-500/30 text-red-300 border border-red-500/50'
                             : 'bg-white/5 text-slate-200 hover:bg-red-500/20 hover:text-red-300 border border-white/10'
                         }`}
@@ -744,6 +929,58 @@ export default function SuggestionsPage() {
                       </button>
                     </div>
                   </div>
+
+                  {showReasonFor[voteKey] && (
+                    <div className="mt-4 space-y-2">
+                      <textarea
+                        value={voteReasonDrafts[voteKey] || ''}
+                        onChange={(e) =>
+                          setVoteReasonDrafts((prev) => ({
+                            ...prev,
+                            [voteKey]: e.target.value,
+                          }))
+                        }
+                        className="w-full rounded-xl bg-slate-900/60 border border-white/10 text-slate-100 text-sm px-3 py-2"
+                        placeholder="Why does this not work for you?"
+                        maxLength={240}
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleVote('activity', activity.id, false)}
+                          className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold"
+                        >
+                          Submit Rejection
+                        </button>
+                        <button
+                          onClick={() =>
+                            setShowReasonFor((prev) => ({
+                              ...prev,
+                              [voteKey]: false,
+                            }))
+                          }
+                          className="px-3 py-1.5 rounded-lg bg-white/10 text-slate-200 text-xs font-semibold"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {userVote?.approved === false && userVote.reason && (
+                    <div className="mt-4 text-xs text-red-200 bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-2">
+                      Rejection reason: {userVote.reason}
+                    </div>
+                  )}
+                  {getAllVotes(voteKey)
+                    .filter((vote) => !vote.approved && vote.reason)
+                    .map((vote) => (
+                      <div
+                        key={vote.id}
+                        className="mt-2 text-xs text-slate-300 bg-white/5 border border-white/10 rounded-xl px-3 py-2"
+                      >
+                        Rejection: {vote.reason}
+                      </div>
+                    ))}
                 </div>
               );
             })}
