@@ -144,10 +144,10 @@ export default function GlobalNavbar() {
           </Link>
 
           {/* Center: Navigation Links */}
-          <div className="hidden md:flex items-center gap-6">
+          <div className="hidden md:flex items-center gap-8">
             <Link
               href="/"
-              className={`text-sm font-semibold transition-colors ${
+              className={`text-base font-semibold transition-colors ${
                 pathname === '/'
                   ? 'text-slate-900 dark:text-slate-50'
                   : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
@@ -157,7 +157,7 @@ export default function GlobalNavbar() {
             </Link>
             <Link
               href="/discover"
-              className={`text-sm font-semibold transition-colors ${
+              className={`text-base font-semibold transition-colors ${
                 pathname === '/discover'
                   ? 'text-slate-900 dark:text-slate-50'
                   : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
@@ -167,7 +167,7 @@ export default function GlobalNavbar() {
             </Link>
             <Link
               href="/community"
-              className={`text-sm font-semibold transition-colors ${
+              className={`text-base font-semibold transition-colors ${
                 pathname === '/community'
                   ? 'text-slate-900 dark:text-slate-50'
                   : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
@@ -247,7 +247,7 @@ export default function GlobalNavbar() {
           ) : (
             <Link
               href="/auth"
-              className="glass-card px-4 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 transition-all text-slate-700 dark:text-slate-300 text-sm font-semibold"
+              className="glass-card px-4 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 transition-all text-slate-700 dark:text-slate-300 text-base font-semibold"
             >
               Sign In
             </Link>
