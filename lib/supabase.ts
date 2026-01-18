@@ -60,6 +60,15 @@ export interface SuggestionVoteRow {
   created_at: string;
 }
 
+export interface FinalizedSuggestionRow {
+  id: string;
+  trip_id: string;
+  option_type: 'flight' | 'accommodation' | 'activity';
+  option_id: string;
+  finalized_by: string;
+  created_at: string;
+}
+
 export interface TripMemberRow {
   id: string; // Primary key (auto-generated UUID)
   trip_id: string;

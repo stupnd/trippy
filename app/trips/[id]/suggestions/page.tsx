@@ -8,6 +8,7 @@ import { ArrowLeft, Sparkles, Plane, Hotel, Target, Calendar, Check } from 'luci
 import confetti from 'canvas-confetti';
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
+import { FinalizedSuggestionRow } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import MagneticButton from '@/components/MagneticButton';
 import FlightMapPath from '@/components/FlightMapPath';
@@ -80,6 +81,7 @@ export default function SuggestionsPage() {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
   const [votes, setVotes] = useState<VotesByOption>({});
+  const [finalized, setFinalized] = useState<FinalizedSuggestionRow[]>([]);
   const [membersCount, setMembersCount] = useState(0);
   const [votingPulse, setVotingPulse] = useState<string | null>(null);
   const [approvedItems, setApprovedItems] = useState<Set<string>>(new Set());
@@ -97,6 +99,7 @@ export default function SuggestionsPage() {
     if (user) {
       fetchSuggestions();
       fetchVotes();
+      fetchFinalized();
       fetchMembersCount();
     }
   }, [authLoading, user, tripId, router]);
@@ -175,6 +178,19 @@ export default function SuggestionsPage() {
       setVotes(byOption);
     } catch (err) {
       console.error('Error fetching votes:', err);
+    }
+  };
+
+  const fetchFinalized = async () => {
+    try {
+      const { data, error: finalizedError } = await supabase
+        .from('suggestion_finalized')
+        .select('*')
+        .eq('trip_id', tripId);
+      if (finalizedError) throw finalizedError;
+      setFinalized((data || []) as FinalizedSuggestionRow[]);
+    } catch (err) {
+      console.error('Error fetching finalized items:', err);
     }
   };
 
@@ -379,6 +395,62 @@ export default function SuggestionsPage() {
         });
     });
     return reasons.length > 0 ? reasons.join('\n') : null;
+  };
+
+  const finalizeItem = async (optionType: 'flight' | 'accommodation' | 'activity', optionId: string) => {
+    if (!user) return;
+    try {
+      const existing = finalized.filter((item) => item.option_type === optionType);
+      if (optionType !== 'activity' && existing.length > 0 && !existing.some((i) => i.option_id === optionId)) {
+        await supabase
+          .from('suggestion_finalized')
+          .delete()
+          .eq('trip_id', tripId)
+          .eq('option_type', optionType);
+      }
+
+      const { data, error: finalizeError } = await supabase
+        .from('suggestion_finalized')
+        .insert({
+          trip_id: tripId,
+          option_type: optionType,
+          option_id: optionId,
+          finalized_by: user.id,
+        })
+        .select('*')
+        .single();
+
+      if (finalizeError) throw finalizeError;
+      if (data) {
+        setFinalized((prev) => {
+          if (optionType === 'activity') {
+            return [...prev, data as FinalizedSuggestionRow];
+          }
+          const filtered = prev.filter((item) => item.option_type !== optionType);
+          return [...filtered, data as FinalizedSuggestionRow];
+        });
+      }
+    } catch (err) {
+      console.error('Error finalizing item:', err);
+    }
+  };
+
+  const unfinalizeItem = async (optionType: 'flight' | 'accommodation' | 'activity', optionId: string) => {
+    if (!user) return;
+    try {
+      const { error: unfinalizeError } = await supabase
+        .from('suggestion_finalized')
+        .delete()
+        .eq('trip_id', tripId)
+        .eq('option_type', optionType)
+        .eq('option_id', optionId);
+      if (unfinalizeError) throw unfinalizeError;
+      setFinalized((prev) =>
+        prev.filter((item) => !(item.option_type === optionType && item.option_id === optionId))
+      );
+    } catch (err) {
+      console.error('Error unfinalizing item:', err);
+    }
   };
 
   const getAirlineDomain = (airline: string): string => {
@@ -1010,87 +1082,152 @@ export default function SuggestionsPage() {
 
             {membersCount > 0 && (
               <>
-                <div className="card-surface rounded-2xl p-6">
-                  <h2 className="text-xl font-semibold text-white mb-4 tracking-tight">✅ Approved Flights</h2>
-                  {flights.filter((f) => isApprovedByAll('flight', f.id)).length === 0 ? (
-                    <p className="text-slate-400">No flights approved by everyone yet.</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {flights
-                        .filter((f) => isApprovedByAll('flight', f.id))
-                        .map((flight) => (
-                          <div
-                            key={flight.id}
-                            className="p-4 rounded-xl bg-slate-800 border border-slate-700"
-                          >
-                            <div className="flex justify-between items-center mb-2">
-                              <div className="text-white font-semibold">{flight.airline}</div>
-                              <div className="text-slate-200 font-semibold">${flight.price}</div>
-                            </div>
-                            <div className="text-sm text-slate-300">
-                              {flight.departure.airport} → {flight.arrival.airport} • {flight.duration}
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                  )}
-                </div>
+                {(() => {
+                  const approvedFlights = flights.filter((f) => isApprovedByAll('flight', f.id));
+                  const approvedStays = accommodations.filter((a) => isApprovedByAll('accommodation', a.id));
+                  const approvedActivities = activities.filter((a) => isApprovedByAll('activity', a.id));
+                  const finalizedFlights = finalized.filter((f) => f.option_type === 'flight');
+                  const finalizedStays = finalized.filter((f) => f.option_type === 'accommodation');
+                  const finalizedActivities = finalized.filter((f) => f.option_type === 'activity');
 
-                <div className="card-surface rounded-2xl p-6">
-                  <h2 className="text-xl font-semibold text-white mb-4 tracking-tight">✅ Approved Stays</h2>
-                  {accommodations.filter((a) => isApprovedByAll('accommodation', a.id)).length === 0 ? (
-                    <p className="text-slate-400">No stays approved by everyone yet.</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {accommodations
-                        .filter((a) => isApprovedByAll('accommodation', a.id))
-                        .map((accommodation) => (
-                          <div
-                            key={accommodation.id}
-                            className="p-4 rounded-xl bg-slate-800 border border-slate-700"
-                          >
-                            <div className="flex justify-between items-center mb-2">
-                              <div className="text-slate-50 font-semibold">{accommodation.name}</div>
-                              <div className="text-slate-200 font-semibold">
-                                ${accommodation.pricePerNight}/night
-                              </div>
-                            </div>
-                            <div className="text-sm text-slate-300">
-                              {accommodation.type} • {accommodation.location}
-                            </div>
+                  return (
+                    <>
+                      <div className="card-surface rounded-2xl p-6">
+                        <h2 className="text-xl font-semibold text-white mb-4 tracking-tight">Approved Flights</h2>
+                        {approvedFlights.length === 0 ? (
+                          <p className="text-slate-400">No flights approved by everyone yet.</p>
+                        ) : (
+                          <div className="space-y-3">
+                            {approvedFlights.map((flight) => {
+                              const isFinal = finalizedFlights.some((f) => f.option_id === flight.id);
+                              return (
+                                <div key={flight.id} className="p-4 rounded-xl bg-slate-800 border border-slate-700">
+                                  <div className="flex justify-between items-center mb-2">
+                                    <div className="text-white font-semibold">{flight.airline}</div>
+                                    <div className="text-slate-200 font-semibold">${flight.price}</div>
+                                  </div>
+                                  <div className="text-sm text-slate-300">
+                                    {flight.departure.airport} → {flight.arrival.airport} • {flight.duration}
+                                  </div>
+                                  <div className="mt-3 flex items-center gap-2">
+                                    <span className="text-xs px-2 py-1 rounded-full border border-emerald-500/40 text-emerald-200">
+                                      Approved
+                                    </span>
+                                    {isFinal && (
+                                      <span className="text-xs px-2 py-1 rounded-full border border-amber-500/40 text-amber-200">
+                                        Finalized
+                                      </span>
+                                    )}
+                                    <button
+                                      onClick={() =>
+                                        isFinal
+                                          ? unfinalizeItem('flight', flight.id)
+                                          : finalizeItem('flight', flight.id)
+                                      }
+                                      className="ml-auto text-xs px-2 py-1 rounded-lg bg-white/10 text-slate-200 hover:bg-white/20"
+                                    >
+                                      {isFinal ? 'Unfinalize' : 'Finalize'}
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
-                        ))}
-                    </div>
-                  )}
-                </div>
+                        )}
+                      </div>
 
-                <div className="card-surface rounded-2xl p-6">
-                  <h2 className="text-xl font-semibold text-slate-50 mb-4">✅ Approved Activities</h2>
-                  {activities.filter((a) => isApprovedByAll('activity', a.id)).length === 0 ? (
-                    <p className="text-slate-400">No activities approved by everyone yet.</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {activities
-                        .filter((a) => isApprovedByAll('activity', a.id))
-                        .map((activity) => (
-                          <div
-                            key={activity.id}
-                            className="p-4 rounded-xl bg-slate-800 border border-slate-700"
-                          >
-                            <div className="flex justify-between items-center mb-2">
-                              <div className="text-slate-50 font-semibold">{activity.name}</div>
-                              <div className="text-slate-200 font-semibold">
-                                {activity.price === 0 ? 'Free' : `$${activity.price}`}
-                              </div>
-                            </div>
-                            <div className="text-sm text-slate-300">
-                              {activity.type} • {activity.location}
-                            </div>
+                      <div className="card-surface rounded-2xl p-6">
+                        <h2 className="text-xl font-semibold text-white mb-4 tracking-tight">Approved Stays</h2>
+                        {approvedStays.length === 0 ? (
+                          <p className="text-slate-400">No stays approved by everyone yet.</p>
+                        ) : (
+                          <div className="space-y-3">
+                            {approvedStays.map((stay) => {
+                              const isFinal = finalizedStays.some((f) => f.option_id === stay.id);
+                              return (
+                                <div key={stay.id} className="p-4 rounded-xl bg-slate-800 border border-slate-700">
+                                  <div className="flex justify-between items-center mb-2">
+                                    <div className="text-slate-50 font-semibold">{stay.name}</div>
+                                    <div className="text-slate-200 font-semibold">${stay.pricePerNight}/night</div>
+                                  </div>
+                                  <div className="text-sm text-slate-300">
+                                    {stay.type} • {stay.location}
+                                  </div>
+                                  <div className="mt-3 flex items-center gap-2">
+                                    <span className="text-xs px-2 py-1 rounded-full border border-emerald-500/40 text-emerald-200">
+                                      Approved
+                                    </span>
+                                    {isFinal && (
+                                      <span className="text-xs px-2 py-1 rounded-full border border-amber-500/40 text-amber-200">
+                                        Finalized
+                                      </span>
+                                    )}
+                                    <button
+                                      onClick={() =>
+                                        isFinal
+                                          ? unfinalizeItem('accommodation', stay.id)
+                                          : finalizeItem('accommodation', stay.id)
+                                      }
+                                      className="ml-auto text-xs px-2 py-1 rounded-lg bg-white/10 text-slate-200 hover:bg-white/20"
+                                    >
+                                      {isFinal ? 'Unfinalize' : 'Finalize'}
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
-                        ))}
-                    </div>
-                  )}
-                </div>
+                        )}
+                      </div>
+
+                      <div className="card-surface rounded-2xl p-6">
+                        <h2 className="text-xl font-semibold text-slate-50 mb-4">Approved Activities</h2>
+                        {approvedActivities.length === 0 ? (
+                          <p className="text-slate-400">No activities approved by everyone yet.</p>
+                        ) : (
+                          <div className="space-y-3">
+                            {approvedActivities.map((activity) => {
+                              const isFinal = finalizedActivities.some((f) => f.option_id === activity.id);
+                              return (
+                                <div key={activity.id} className="p-4 rounded-xl bg-slate-800 border border-slate-700">
+                                  <div className="flex justify-between items-center mb-2">
+                                    <div className="text-slate-50 font-semibold">{activity.name}</div>
+                                    <div className="text-slate-200 font-semibold">
+                                      {activity.price === 0 ? 'Free' : `$${activity.price}`}
+                                    </div>
+                                  </div>
+                                  <div className="text-sm text-slate-300">
+                                    {activity.type} • {activity.location}
+                                  </div>
+                                  <div className="mt-3 flex items-center gap-2">
+                                    <span className="text-xs px-2 py-1 rounded-full border border-emerald-500/40 text-emerald-200">
+                                      Approved
+                                    </span>
+                                    {isFinal && (
+                                      <span className="text-xs px-2 py-1 rounded-full border border-amber-500/40 text-amber-200">
+                                        Finalized
+                                      </span>
+                                    )}
+                                    <button
+                                      onClick={() =>
+                                        isFinal
+                                          ? unfinalizeItem('activity', activity.id)
+                                          : finalizeItem('activity', activity.id)
+                                      }
+                                      className="ml-auto text-xs px-2 py-1 rounded-lg bg-white/10 text-slate-200 hover:bg-white/20"
+                                    >
+                                      {isFinal ? 'Unfinalize' : 'Finalize'}
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
               </>
             )}
           </div>
