@@ -188,6 +188,7 @@ export default function GlobalNavbar() {
                     src={avatarUrl}
                     alt={userInitials}
                     className="w-8 h-8 rounded-full object-cover border-2 border-white/20 dark:border-white/20"
+                    referrerPolicy="no-referrer"
                   />
                 ) : (
                   <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-xs">

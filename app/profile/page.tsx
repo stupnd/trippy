@@ -521,6 +521,7 @@ export default function ProfilePage() {
                     src={profile.avatar_url}
                     alt={profile.name}
                     className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-white text-4xl font-bold">
