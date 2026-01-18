@@ -8,6 +8,7 @@ import { ArrowLeft, Sparkles, Plane, Hotel, Target, Calendar, Check } from 'luci
 import confetti from 'canvas-confetti';
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
+import { FinalizedSuggestionRow } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import MagneticButton from '@/components/MagneticButton';
 import FlightMapPath from '@/components/FlightMapPath';
@@ -80,6 +81,7 @@ export default function SuggestionsPage() {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
   const [votes, setVotes] = useState<VotesByOption>({});
+  const [finalized, setFinalized] = useState<FinalizedSuggestionRow[]>([]);
   const [membersCount, setMembersCount] = useState(0);
   const [votingPulse, setVotingPulse] = useState<string | null>(null);
   const [approvedItems, setApprovedItems] = useState<Set<string>>(new Set());
@@ -98,6 +100,7 @@ export default function SuggestionsPage() {
     if (user) {
       fetchSuggestions();
       fetchVotes();
+      fetchFinalized();
       fetchMembersCount();
     }
   }, [authLoading, user, tripId, router]);
@@ -187,6 +190,19 @@ export default function SuggestionsPage() {
       setVotes(byOption);
     } catch (err) {
       console.error('Error fetching votes:', err);
+    }
+  };
+
+  const fetchFinalized = async () => {
+    try {
+      const { data, error: finalizedError } = await supabase
+        .from('suggestion_finalized')
+        .select('*')
+        .eq('trip_id', tripId);
+      if (finalizedError) throw finalizedError;
+      setFinalized((data || []) as FinalizedSuggestionRow[]);
+    } catch (err) {
+      console.error('Error fetching finalized items:', err);
     }
   };
 
@@ -391,6 +407,62 @@ export default function SuggestionsPage() {
         });
     });
     return reasons.length > 0 ? reasons.join('\n') : null;
+  };
+
+  const finalizeItem = async (optionType: 'flight' | 'accommodation' | 'activity', optionId: string) => {
+    if (!user) return;
+    try {
+      const existing = finalized.filter((item) => item.option_type === optionType);
+      if (optionType !== 'activity' && existing.length > 0 && !existing.some((i) => i.option_id === optionId)) {
+        await supabase
+          .from('suggestion_finalized')
+          .delete()
+          .eq('trip_id', tripId)
+          .eq('option_type', optionType);
+      }
+
+      const { data, error: finalizeError } = await supabase
+        .from('suggestion_finalized')
+        .insert({
+          trip_id: tripId,
+          option_type: optionType,
+          option_id: optionId,
+          finalized_by: user.id,
+        })
+        .select('*')
+        .single();
+
+      if (finalizeError) throw finalizeError;
+      if (data) {
+        setFinalized((prev) => {
+          if (optionType === 'activity') {
+            return [...prev, data as FinalizedSuggestionRow];
+          }
+          const filtered = prev.filter((item) => item.option_type !== optionType);
+          return [...filtered, data as FinalizedSuggestionRow];
+        });
+      }
+    } catch (err) {
+      console.error('Error finalizing item:', err);
+    }
+  };
+
+  const unfinalizeItem = async (optionType: 'flight' | 'accommodation' | 'activity', optionId: string) => {
+    if (!user) return;
+    try {
+      const { error: unfinalizeError } = await supabase
+        .from('suggestion_finalized')
+        .delete()
+        .eq('trip_id', tripId)
+        .eq('option_type', optionType)
+        .eq('option_id', optionId);
+      if (unfinalizeError) throw unfinalizeError;
+      setFinalized((prev) =>
+        prev.filter((item) => !(item.option_type === optionType && item.option_id === optionId))
+      );
+    } catch (err) {
+      console.error('Error unfinalizing item:', err);
+    }
   };
 
   const getAirlineDomain = (airline: string): string => {
@@ -1045,10 +1117,8 @@ export default function SuggestionsPage() {
                               {flight.departure.airport} → {flight.arrival.airport} • {flight.duration}
                             </div>
                           </div>
-                        ))}
-                    </div>
-                  )}
-                </div>
+                        )}
+                      </div>
 
                 <div className="card-surface rounded-2xl p-6">
                   <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-4 tracking-tight">✅ Approved Stays</h2>
@@ -1073,10 +1143,8 @@ export default function SuggestionsPage() {
                               {accommodation.type} • {accommodation.location}
                             </div>
                           </div>
-                        ))}
-                    </div>
-                  )}
-                </div>
+                        )}
+                      </div>
 
                 <div className="card-surface rounded-2xl p-6">
                   <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50 mb-4">✅ Approved Activities</h2>
@@ -1101,10 +1169,11 @@ export default function SuggestionsPage() {
                               {activity.type} • {activity.location}
                             </div>
                           </div>
-                        ))}
-                    </div>
-                  )}
-                </div>
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
               </>
             )}
           </div>
