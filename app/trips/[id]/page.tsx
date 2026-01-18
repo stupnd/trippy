@@ -140,30 +140,54 @@ export default function TripDetailPage() {
 
       // Fetch profile avatars for all members
       const memberUserIds = (membersData || []).map(m => (m as any).user_id).filter(Boolean);
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('id, avatar_url')
-        .in('id', memberUserIds.length > 0 ? memberUserIds : ['']); // Empty array will return nothing, but prevents error
+      
+      console.log('Member user IDs to fetch avatars for:', memberUserIds);
+      
+      let profilesData = null;
+      if (memberUserIds.length > 0) {
+        const { data, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, avatar_url')
+          .in('id', memberUserIds);
+        
+        if (profilesError) {
+          console.error('❌ Error fetching profiles:', profilesError);
+          console.error('Error details:', JSON.stringify(profilesError, null, 2));
+        } else {
+          profilesData = data;
+          console.log('✅ Fetched profiles for avatars:', profilesData);
+          if (!profilesData || profilesData.length === 0) {
+            console.warn('⚠️ No profiles found. This might be an RLS (Row Level Security) issue.');
+            console.warn('Check Supabase RLS policies on the profiles table.');
+          }
+        }
+      } else {
+        console.warn('⚠️ No member user IDs found. All members might have null user_id.');
+      }
 
       // Create a map of user_id -> avatar_url
       const avatarMap = new Map<string, string | null>();
       (profilesData || []).forEach(profile => {
         if (profile.id) {
           avatarMap.set(profile.id, profile.avatar_url || null);
+          console.log(`Mapped avatar for user ${profile.id}:`, profile.avatar_url);
         }
       });
 
       const membersWithStatus: MemberWithStatus[] = (membersData || []).map(
         (member) => {
           const userId = (member as any).user_id;
+          const avatarUrl = userId ? avatarMap.get(userId) || null : null;
+          console.log(`Member ${member.name} (user_id: ${userId}): avatar_url =`, avatarUrl);
           return {
             ...member,
             hasPreferences: membersWithPreferences.has(member.id),
-            avatar_url: userId ? avatarMap.get(userId) || null : null,
+            avatar_url: avatarUrl,
           };
         }
       );
 
+      console.log('Setting members with avatars:', membersWithStatus.map(m => ({ name: m.name, avatar_url: m.avatar_url })));
       setMembers(membersWithStatus);
 
       const latestPreferenceUpdate =
@@ -688,6 +712,46 @@ export default function TripDetailPage() {
       supabase.removeChannel(channel);
     };
   }, [tripId, members, user, membersDrawerOpen, drawerTab]);
+
+  // Real-time profile updates for avatar sync
+  useEffect(() => {
+    if (!tripId || members.length === 0) return;
+
+    // Get all user IDs from current members
+    const memberUserIds = members.map(m => (m as any).user_id).filter(Boolean);
+    if (memberUserIds.length === 0) return;
+
+    console.log('Setting up real-time profile subscription for user IDs:', memberUserIds);
+
+    // Subscribe to each profile individually (Supabase filter might not work with multiple IDs)
+    const channels = memberUserIds.map(userId => {
+      const channel = supabase
+        .channel(`trip_profile_${tripId}_${userId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'profiles',
+            filter: `id=eq.${userId}`,
+          },
+          (payload) => {
+            console.log('Profile updated via real-time:', payload);
+            // When a profile is updated (e.g., avatar_url changed), re-fetch members
+            fetchDashboardData();
+          }
+        )
+        .subscribe();
+      return channel;
+    });
+
+    return () => {
+      channels.forEach(channel => {
+        supabase.removeChannel(channel);
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tripId, members]);
 
   if (authLoading || memberLoading || loading) {
     return (
@@ -1256,6 +1320,15 @@ export default function TripDetailPage() {
                           src={member.avatar_url}
                           alt={member.name}
                           className="w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            console.error('Failed to load avatar for', member.name, ':', member.avatar_url);
+                            // Hide the image on error and show initials instead
+                            e.currentTarget.style.display = 'none';
+                          }}
+                          onLoad={() => {
+                            console.log('Avatar loaded successfully for', member.name, ':', member.avatar_url);
+                          }}
                         />
                       ) : (
                         initials
@@ -1588,6 +1661,7 @@ export default function TripDetailPage() {
                               src={member.avatar_url}
                               alt={member.name}
                               className="w-full h-full object-cover"
+                              referrerPolicy="no-referrer"
                             />
                           ) : (
                             initials
@@ -1944,6 +2018,7 @@ function DrawerChat({ tripId, members }: { tripId: string; members: MemberWithSt
                             src={senderMember.avatar_url}
                             alt={message.sender_name || 'User'}
                             className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
                           />
                         ) : (
                           senderInitials
