@@ -86,6 +86,7 @@ export default function SuggestionsPage() {
   const [hoveredFlightId, setHoveredFlightId] = useState<string | null>(null);
   const [voteReasonDrafts, setVoteReasonDrafts] = useState<Record<string, string>>({});
   const [showReasonFor, setShowReasonFor] = useState<Record<string, boolean>>({});
+  const [membersMap, setMembersMap] = useState<Record<string, string>>({}); // member_id -> name
   const summaryUpdateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -112,11 +113,22 @@ export default function SuggestionsPage() {
     try {
       const { data, error } = await supabase
         .from('trip_members')
-        .select('id', { count: 'exact' })
+        .select('id, user_id, name')
         .eq('trip_id', tripId);
 
       if (!error && data) {
         setMembersCount(data.length);
+        // Create member ID to name map - use user_id since vote.member_id is user.id (auth.uid())
+        const map: Record<string, string> = {};
+        data.forEach((member) => {
+          // Map both user_id and id to handle both cases
+          if (member.user_id) {
+            map[member.user_id] = member.name;
+          }
+          // Also map by id in case votes use trip_members.id
+          map[member.id] = member.name;
+        });
+        setMembersMap(map);
       }
     } catch (err) {
       console.error('Error fetching members count:', err);
@@ -713,7 +725,7 @@ export default function SuggestionsPage() {
                         key={vote.id}
                         className="mt-2 text-xs text-slate-300 bg-white/5 border border-white/10 rounded-xl px-3 py-2"
                       >
-                        Rejection: {vote.reason}
+                        <span className="font-semibold text-slate-200">{membersMap[vote.member_id] || 'Unknown'}'s rejection:</span> {vote.reason}
                       </div>
                     ))}
                 </motion.div>
@@ -864,7 +876,7 @@ export default function SuggestionsPage() {
                         key={vote.id}
                         className="mt-2 text-xs text-slate-300 bg-white/5 border border-white/10 rounded-xl px-3 py-2"
                       >
-                        Rejection: {vote.reason}
+                        <span className="font-semibold text-slate-200">{membersMap[vote.member_id] || 'Unknown'}'s rejection:</span> {vote.reason}
                       </div>
                     ))}
                 </div>
@@ -990,7 +1002,7 @@ export default function SuggestionsPage() {
                         key={vote.id}
                         className="mt-2 text-xs text-slate-300 bg-white/5 border border-white/10 rounded-xl px-3 py-2"
                       >
-                        Rejection: {vote.reason}
+                        <span className="font-semibold text-slate-200">{membersMap[vote.member_id] || 'Unknown'}'s rejection:</span> {vote.reason}
                       </div>
                     ))}
                 </div>
