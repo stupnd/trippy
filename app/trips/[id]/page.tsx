@@ -55,6 +55,8 @@ export default function TripDetailPage() {
   const [editError, setEditError] = useState('');
   const [statusSaving, setStatusSaving] = useState(false);
   const [statusError, setStatusError] = useState('');
+  const [visibilitySaving, setVisibilitySaving] = useState(false);
+  const [visibilityError, setVisibilityError] = useState('');
   const [editForm, setEditForm] = useState({
     name: '',
     city: '',
@@ -534,6 +536,35 @@ export default function TripDetailPage() {
       setStatusError(updateError.message || 'Failed to update trip status');
     } finally {
       setStatusSaving(false);
+    }
+  };
+
+  const handleVisibilityChange = async (nextValue: string) => {
+    if (!trip || !isCreator) return;
+    const nextPublic = nextValue === 'public';
+    if (nextPublic === !!trip.is_public) return;
+
+    setVisibilitySaving(true);
+    setVisibilityError('');
+
+    try {
+      const { data, error: updateError } = await supabase
+        .from('trips')
+        .update({ is_public: nextPublic })
+        .eq('id', tripId)
+        .select('is_public')
+        .single();
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      setTrip((prev) => (prev ? { ...prev, is_public: data?.is_public ?? nextPublic } : prev));
+    } catch (updateError: any) {
+      console.error('Error updating trip visibility:', updateError);
+      setVisibilityError(updateError.message || 'Failed to update visibility');
+    } finally {
+      setVisibilitySaving(false);
     }
   };
 
@@ -1144,6 +1175,9 @@ export default function TripDetailPage() {
             {statusError && (
               <p className="text-xs text-red-300 mt-1">{statusError}</p>
             )}
+            {visibilityError && (
+              <p className="text-xs text-red-300 mt-1">{visibilityError}</p>
+            )}
           </div>
 
           {/* Right Side: Badge & Action Buttons */}
@@ -1186,6 +1220,24 @@ export default function TripDetailPage() {
                 </select>
               )}
             </div>
+            <div className="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-slate-200 text-xs whitespace-nowrap flex items-center gap-2">
+              <span>Visibility: {trip.is_public ? 'Public' : 'Private'}</span>
+              {isCreator && (
+                <select
+                  value={trip.is_public ? 'public' : 'private'}
+                  onChange={(e) => handleVisibilityChange(e.target.value)}
+                  disabled={visibilitySaving}
+                  className="bg-transparent text-slate-200 text-xs border border-white/10 rounded-lg px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                >
+                  <option value="private" className="text-slate-900">
+                    Private
+                  </option>
+                  <option value="public" className="text-slate-900">
+                    Public
+                  </option>
+                </select>
+              )}
+            </div>
 
             {/* Action Buttons */}
             <div className="flex gap-2 items-center">
@@ -1196,6 +1248,15 @@ export default function TripDetailPage() {
                 <Share2 className="w-4 h-4 opacity-70" />
                 <span className="hidden sm:inline">Share</span>
               </Link>
+              {isCreator && (
+                <Link
+                  href={`/trips/${tripId}/requests`}
+                  className="px-4 py-2 rounded-xl font-medium text-slate-300 border border-white/20 hover:bg-white/10 hover:border-white/30 hover:text-white transition-all flex items-center gap-1.5 text-sm"
+                >
+                  <Users className="w-4 h-4 opacity-70" />
+                  <span className="hidden sm:inline">Requests</span>
+                </Link>
+              )}
               {isCreator && (
                 <button
                   onClick={() => {

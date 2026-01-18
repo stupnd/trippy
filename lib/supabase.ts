@@ -27,6 +27,17 @@ export interface TripRow {
   budget_max?: number | null;
   budget_updated_at?: string | null;
   status?: string | null;
+  is_public?: boolean | null;
+}
+
+export interface JoinRequestRow {
+  id: string;
+  trip_id: string;
+  requester_id: string;
+  display_name: string;
+  message: string;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
 }
 
 export interface TripMemberRow {
