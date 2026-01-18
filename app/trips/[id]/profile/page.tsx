@@ -163,12 +163,6 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-slate-900 py-8">
       <div className="container mx-auto px-4 max-w-4xl">
         <div className="mb-6">
-          <button
-            onClick={() => router.back()}
-            className="text-blue-400 hover:text-blue-300 mb-4 underline"
-          >
-            ← Back to Trip
-          </button>
           <h1 className="text-3xl font-bold text-slate-50">Profile & Preferences</h1>
           <p className="text-slate-300 mt-2">
             {trip.destination.city}, {trip.destination.country}

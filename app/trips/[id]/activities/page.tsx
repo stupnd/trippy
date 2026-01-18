@@ -212,20 +212,6 @@ export default function ActivitiesPage() {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4 max-w-6xl">
         <div className="mb-6">
-          <div className="flex gap-4 mb-4">
-            <Link
-              href="/"
-              className="text-indigo-600 hover:underline"
-            >
-              ← Back to My Trips
-            </Link>
-            <button
-              onClick={() => router.back()}
-              className="text-indigo-600 hover:underline"
-            >
-              ← Back to Trip
-            </button>
-          </div>
           <h1 className="text-3xl font-bold text-gray-900">Activities</h1>
           <p className="text-gray-600 mt-2">
             {trip.destination.city}, {trip.destination.country}

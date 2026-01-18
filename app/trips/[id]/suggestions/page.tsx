@@ -345,11 +345,6 @@ export default function SuggestionsPage() {
     return (
       <div className="min-h-screen pb-8">
         <div className="container mx-auto px-4 max-w-7xl">
-          <Link href={`/trips/${tripId}`} className="text-blue-400 hover:text-blue-300 mb-4 inline-flex items-center gap-2 transition-colors">
-            <ArrowLeft className="w-4 h-4" />
-            Back to Trip
-          </Link>
-
           <div className="glass-card p-16 text-center">
             <Sparkles className="w-16 h-16 text-purple-400 mx-auto mb-6 opacity-80" />
             <h1 className="text-4xl font-bold text-white mb-10 tracking-tight">Generate Group Recommendations</h1>
