@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import WorldMapFlashlight from './WorldMapFlashlight';
 import GlobalNavbar from './GlobalNavbar';
 import Breadcrumbs from './Breadcrumbs';
+import InstallPrompt from './InstallPrompt';
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -32,6 +33,9 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           {children}
         </motion.main>
       </AnimatePresence>
+
+      {/* PWA Install Prompt */}
+      <InstallPrompt />
     </div>
   );
 }

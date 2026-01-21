@@ -1,3 +1,5 @@
+import withPWA from 'next-pwa';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     // 1. Ignore TypeScript errors during build (temporary fix)
@@ -9,5 +11,12 @@ const nextConfig = {
       ignoreDuringBuilds: true,
     },
   };
-  
-  export default nextConfig;
+
+const pwaConfig = withPWA({
+  dest: 'public',
+  register: true,
+  skipWaiting: true,
+  disable: process.env.NODE_ENV === 'development', // Disable in dev mode for faster development
+});
+
+export default pwaConfig(nextConfig);
