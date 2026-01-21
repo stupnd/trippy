@@ -402,11 +402,18 @@ function TripCard({ trip, idx, user, isMember, request, onJoin }: any) {
             {trip.status || 'Planning'}
           </span>
           <div className="flex -space-x-3">
-            {trip.members?.map((m: any, i: number) => (
-              <div key={i} className="w-8 h-8 rounded-full border-2 border-white overflow-hidden bg-indigo-500 flex items-center justify-center text-[10px] font-bold dark:border-slate-900">
-                {m.avatar_url ? <img src={m.avatar_url} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : m.name[0]}
-              </div>
-            ))}
+              {trip.members?.map((m: any, i: number) => {
+                const initial = typeof m.name === 'string' && m.name.length > 0 ? m.name[0] : 'T';
+                return (
+                  <div key={i} className="w-8 h-8 rounded-full border-2 border-white overflow-hidden bg-indigo-500 flex items-center justify-center text-[10px] font-bold dark:border-slate-900">
+                    {m.avatar_url ? (
+                      <img src={m.avatar_url} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    ) : (
+                      initial
+                    )}
+                  </div>
+                );
+              })}
             {trip.memberCount > 5 && (
               <div className="w-8 h-8 rounded-full border-2 border-white bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600 dark:border-slate-900 dark:bg-slate-800 dark:text-slate-400">
                 +{trip.memberCount - 5}
