@@ -418,7 +418,10 @@ export default function NewTripClient() {
                           <button
                             key={idx}
                             type="button"
-                            onClick={() => handleOriginSelect(city)}
+                            onMouseDown={(e) => {
+                              e.preventDefault(); // Prevent input blur
+                              handleOriginSelect(city);
+                            }}
                             className="w-full text-left px-4 py-3 hover:bg-slate-100 transition-colors border-b border-slate-100 last:border-0 dark:hover:bg-white/10 dark:border-white/5"
                           >
                             <div className="text-slate-900 font-medium dark:text-white">{city.display}</div>
@@ -481,7 +484,10 @@ export default function NewTripClient() {
                           <button
                             key={idx}
                             type="button"
-                            onClick={() => handleDestSelect(city)}
+                            onMouseDown={(e) => {
+                              e.preventDefault(); // Prevent input blur
+                              handleDestSelect(city);
+                            }}
                             className="w-full text-left px-4 py-3 hover:bg-slate-100 transition-colors border-b border-slate-100 last:border-0 dark:hover:bg-white/10 dark:border-white/5"
                           >
                             <div className="text-slate-900 font-medium dark:text-white">{city.display}</div>
