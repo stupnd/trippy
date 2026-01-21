@@ -14,7 +14,7 @@ export default function NewTripClient() {
   const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [creatorProfile, setCreatorProfile] = useState<{ full_name?: string; avatar_url?: string | null } | null>(null);
+  const [creatorProfile, setCreatorProfile] = useState<{ full_name?: string; name?: string; avatar_url?: string | null } | null>(null);
   const [countrySuggestions, setCountrySuggestions] = useState<string[]>([]);
   const [showCountrySuggestions, setShowCountrySuggestions] = useState(false);
   const [formData, setFormData] = useState({
@@ -245,7 +245,7 @@ export default function NewTripClient() {
       try {
         const { data: profile, error } = await supabase
           .from('profiles')
-          .select('full_name, avatar_url')
+          .select('full_name, name, avatar_url')
           .eq('id', user.id)
           .maybeSingle();
         
@@ -351,22 +351,25 @@ export default function NewTripClient() {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Creator Identity Display */}
-            {creatorProfile?.full_name ? (
-              <div className="bg-slate-100 border border-slate-200 rounded-lg px-4 py-3 dark:bg-zinc-900/50 dark:border-white/10">
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  Creating as:{' '}
-                  <span className="font-semibold text-slate-800 dark:text-slate-300">
-                    {creatorProfile.full_name}
-                  </span>
-                </p>
-              </div>
-            ) : user && (
-              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3">
-                <p className="text-sm text-amber-400">
-                  ⚠️ Please set up your profile name in <a href="/profile" className="underline hover:text-amber-300">Profile Settings</a> before creating a trip.
-                </p>
-              </div>
-            )}
+            {(() => {
+              const displayName = creatorProfile?.full_name || creatorProfile?.name;
+              return displayName ? (
+                <div className="bg-slate-100 border border-slate-200 rounded-lg px-4 py-3 dark:bg-zinc-900/50 dark:border-white/10">
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                    Creating as:{' '}
+                    <span className="font-semibold text-slate-800 dark:text-slate-300">
+                      {displayName}
+                    </span>
+                  </p>
+                </div>
+              ) : user && (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3">
+                  <p className="text-sm text-amber-400">
+                    ⚠️ Please set up your profile name in <a href="/profile" className="underline hover:text-amber-300">Profile Settings</a> before creating a trip.
+                  </p>
+                </div>
+              );
+            })()}
 
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-slate-700 dark:text-slate-400 mb-2">
@@ -546,7 +549,7 @@ export default function NewTripClient() {
             <div className="flex gap-4">
               <button
                 type="submit"
-                disabled={loading || !creatorProfile?.full_name}
+                disabled={loading || !(creatorProfile?.full_name || creatorProfile?.name)}
                 className="flex-1 bg-sky-200 text-slate-900 px-6 py-3 rounded-lg font-semibold hover:bg-sky-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700 dark:border-white/10"
               >
                 {loading ? 'Creating...' : 'Create Trip'}
