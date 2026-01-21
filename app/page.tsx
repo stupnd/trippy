@@ -173,12 +173,12 @@ function TripCard({
                 );
               }
 
-              const initials = member.name
+              const initials = (member.name || '')
                 .split(' ')
-                .map(n => n[0])
+                .map(n => (n && n.length > 0 ? n[0] : ''))
                 .join('')
                 .toUpperCase()
-                .slice(0, 2);
+                .slice(0, 2) || '?';
               const colors = [
                 'bg-slate-600', 'bg-zinc-700', 'bg-neutral-700', 'bg-slate-700',
                 'bg-zinc-600', 'bg-slate-800', 'bg-neutral-800', 'bg-zinc-800'
