@@ -22,11 +22,22 @@ export async function GET(request: NextRequest) {
     const tripId = searchParams.get('tripId');
     const memberId = searchParams.get('memberId');
 
-    if (!tripId || !memberId || memberId !== user.id) {
+    if (!tripId || !memberId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const supabaseAdmin = getSupabaseAdmin();
+    const { data: memberRow, error: memberError } = await supabaseAdmin
+      .from('trip_members')
+      .select('id')
+      .eq('id', memberId)
+      .eq('trip_id', tripId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (memberError || !memberRow) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
     const { data, error } = await supabaseAdmin
       .from('user_preferences')
       .select('*')
@@ -54,14 +65,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const payload = await request.json();
+    let payload;
+    try {
+      payload = await request.json();
+    } catch (parseError) {
+      return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
+    }
     const { trip_id, member_id } = payload ?? {};
 
-    if (!trip_id || !member_id || member_id !== user.id) {
+    if (!trip_id || !member_id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const supabaseAdmin = getSupabaseAdmin();
+    const { data: memberRow, error: memberError } = await supabaseAdmin
+      .from('trip_members')
+      .select('id')
+      .eq('id', member_id)
+      .eq('trip_id', trip_id)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (memberError || !memberRow) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
     const { data: existing, error: existingError } = await supabaseAdmin
       .from('user_preferences')
       .select('id')
@@ -70,6 +97,7 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (existingError) {
+      console.error('Preferences fetch error:', existingError);
       throw existingError;
     }
 
@@ -80,6 +108,7 @@ export async function POST(request: NextRequest) {
         .eq('id', existing.id);
 
       if (error) {
+        console.error('Preferences update error:', error);
         throw error;
       }
     } else {
@@ -88,6 +117,7 @@ export async function POST(request: NextRequest) {
         .insert(payload);
 
       if (error) {
+        console.error('Preferences insert error:', error);
         throw error;
       }
     }
@@ -95,7 +125,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to save preferences' },
+      {
+        error: error instanceof Error ? error.message : 'Failed to save preferences',
+        details: error,
+      },
       { status: 500 }
     );
   }

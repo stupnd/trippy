@@ -62,9 +62,21 @@ export default function PreferencesPage() {
     'Any',
   ];
 
-  const setMemberFromUser = () => {
+  const setMemberFromUser = async () => {
     if (!user) return;
-    setSelectedMemberId(user.id);
+    const { data: member, error: memberError } = await supabase
+      .from('trip_members')
+      .select('id')
+      .eq('trip_id', tripId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (memberError) {
+      console.error('Error fetching member id:', memberError);
+      return;
+    }
+    if (member?.id) {
+      setSelectedMemberId(member.id);
+    }
   };
 
   const fetchPreferences = async () => {
@@ -136,7 +148,7 @@ export default function PreferencesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedMemberId || !user || selectedMemberId !== user.id) {
+    if (!selectedMemberId || !user) {
       setError('You can only edit your own preferences.');
       return;
     }
