@@ -157,18 +157,6 @@ export default function CommunityPage() {
     setRequestSaving(true);
     setRequestError('');
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('full_name')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      const displayName =
-        profile?.full_name ||
-        user.user_metadata?.full_name ||
-        user.email?.split('@')[0] ||
-        'Traveler';
-
       const { data, error: upsertError } = await supabase
         .from('join_requests')
         .upsert({
@@ -177,14 +165,13 @@ export default function CommunityPage() {
           requester_id: user.id,
           message: requestForm.message.trim(),
           status: 'pending',
-          display_name: displayName,
         }, { onConflict: 'trip_id, requester_id' })
         .select('*')
         .single();
       
-      if (insertError) {
+      if (upsertError) {
         // Handle duplicate key violation (error code 23505)
-        if (insertError.code === '23505' || insertError.message?.includes('unique constraint') || insertError.message?.includes('duplicate key')) {
+        if (upsertError.code === '23505' || upsertError.message?.includes('unique constraint') || upsertError.message?.includes('duplicate key')) {
           setRequestError('You have already sent a request for this trip.');
           // Refresh requests to get the existing one
           const { data: existingRequest } = await supabase
@@ -198,7 +185,7 @@ export default function CommunityPage() {
           }
           return;
         }
-        throw insertError;
+        throw upsertError;
       }
       
       setRequestsByTrip((prev) => ({ ...prev, [requestTrip.id]: data as JoinRequest }));
