@@ -65,7 +65,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const payload = await request.json();
+    let payload;
+    try {
+      payload = await request.json();
+    } catch (parseError) {
+      return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
+    }
     const { trip_id, member_id } = payload ?? {};
 
     if (!trip_id || !member_id) {

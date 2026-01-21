@@ -183,6 +183,21 @@ export default function CommunityPage() {
         .single();
       
       if (upsertError) {
+        // Handle duplicate key violation (error code 23505)
+        if (upsertError.code === '23505' || upsertError.message?.includes('unique constraint') || upsertError.message?.includes('duplicate key')) {
+          setRequestError('You have already sent a request for this trip.');
+          // Refresh requests to get the existing one
+          const { data: existingRequest } = await supabase
+            .from('join_requests')
+            .select('*')
+            .eq('trip_id', requestTrip.id)
+            .eq('requester_id', user.id)
+            .maybeSingle();
+          if (existingRequest) {
+            setRequestsByTrip((prev) => ({ ...prev, [requestTrip.id]: existingRequest as JoinRequest }));
+          }
+          return;
+        }
         throw upsertError;
       }
       
